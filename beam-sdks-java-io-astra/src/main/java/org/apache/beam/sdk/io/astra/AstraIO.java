@@ -15,45 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.astra;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
-
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.PlainTextAuthProvider;
-import com.datastax.driver.core.QueryOptions;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SocketOptions;
-import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.TokenAwarePolicy;
+import com.datastax.driver.core.*;
 import com.google.auto.value.AutoValue;
-
-import java.io.File;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.function.BiFunction;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Reshuffle;
-import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -62,6 +34,18 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.Visi
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.io.File;
+import java.math.BigInteger;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 /**
  * An IO to read and write from/to Apache Cassandra
@@ -125,24 +109,20 @@ import org.slf4j.LoggerFactory;
  * }</pre>
  */
 @Experimental(Kind.SOURCE_SINK)
-@SuppressWarnings({
-  "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
-  "nullness" // TODO(https://github.com/apache/beam/issues/20497)
-})
-public class CassandraIO {
+public class AstraIO {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CassandraIO.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
 
-  private CassandraIO() {}
+  private AstraIO() {}
 
   /** Provide a {@link Read} {@link PTransform} to read data from a Cassandra database. */
   public static <T> Read<T> read() {
-    return new AutoValue_CassandraIO_Read.Builder<T>().build();
+    return new AutoValue_AstraIO_Read.Builder<T>().build();
   }
 
   /** Provide a {@link ReadAll} {@link PTransform} to read data from a Cassandra database. */
   public static <T> ReadAll<T> readAll() {
-    return new AutoValue_CassandraIO_ReadAll.Builder<T>().build();
+    return new AutoValue_AstraIO_ReadAll.Builder<T>().build();
   }
 
   /** Provide a {@link Write} {@link PTransform} to write data to a Cassandra database. */
@@ -156,7 +136,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link CassandraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
    * information on usage and configuration.
    */
   @AutoValue
@@ -164,25 +144,17 @@ public class CassandraIO {
   @SuppressWarnings({"rawtypes"})
   public abstract static class Read<T> extends PTransform<PBegin, PCollection<T>> {
 
-    abstract @Nullable ValueProvider<List<String>> hosts();
-
-    abstract @Nullable ValueProvider<String> query();
-
-    abstract @Nullable ValueProvider<Integer> port();
-
     abstract @Nullable ValueProvider<String> keyspace();
 
     abstract @Nullable ValueProvider<String> table();
+
+    abstract @Nullable ValueProvider<String> query();
 
     abstract @Nullable Class<T> entity();
 
     abstract @Nullable Coder<T> coder();
 
-    abstract @Nullable ValueProvider<String> username();
-
-    abstract @Nullable ValueProvider<String> password();
-
-    abstract @Nullable ValueProvider<String> localDc();
+    abstract @Nullable ValueProvider<String> token();
 
     abstract @Nullable ValueProvider<String> consistencyLevel();
 
@@ -192,41 +164,14 @@ public class CassandraIO {
 
     abstract @Nullable ValueProvider<Integer> readTimeout();
 
+    abstract @Nullable ValueProvider<String> cloudSecureConnectBundle();
+
     abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
 
     @Nullable
     abstract ValueProvider<Set<RingRange>> ringRanges();
 
-    /**
-     * Initialize a 2-way SSL connection over SNI with the cloud service.
-     */
-    @Nullable
-    abstract ValueProvider<String> cloudSecureConnectBundle();
-
     abstract Builder<T> builder();
-
-    /** Specify the hosts of the Apache Cassandra instances. */
-    public Read<T> withHosts(List<String> hosts) {
-      checkArgument(hosts != null, "hosts can not be null");
-      checkArgument(!hosts.isEmpty(), "hosts can not be empty");
-      return withHosts(ValueProvider.StaticValueProvider.of(hosts));
-    }
-
-    /** Specify the hosts of the Apache Cassandra instances. */
-    public Read<T> withHosts(ValueProvider<List<String>> hosts) {
-      return builder().setHosts(hosts).build();
-    }
-
-    /** Specify the port number of the Apache Cassandra instances. */
-    public Read<T> withPort(int port) {
-      checkArgument(port > 0, "port must be > 0, but was: %s", port);
-      return withPort(ValueProvider.StaticValueProvider.of(port));
-    }
-
-    /** Specify the port number of the Apache Cassandra instances. */
-    public Read<T> withPort(ValueProvider<Integer> port) {
-      return builder().setPort(port).build();
-    }
 
     /** Specify the Cassandra keyspace where to read data. */
     public Read<T> withKeyspace(String keyspace) {
@@ -262,7 +207,7 @@ public class CassandraIO {
     }
 
     /**
-     * Specify the entity class (annotated POJO). The {@link CassandraIO} will read the data and
+     * Specify the entity class (annotated POJO). The {@link AstraIO} will read the data and
      * convert the data as entity instances. The {@link PCollection} resulting from the read will
      * contains entity elements.
      */
@@ -277,37 +222,15 @@ public class CassandraIO {
       return builder().setCoder(coder).build();
     }
 
-    /** Specify the username for authentication. */
-    public Read<T> withUsername(String username) {
-      checkArgument(username != null, "username can not be null");
-      return withUsername(ValueProvider.StaticValueProvider.of(username));
+    /** Specify the token used for authentication. */
+    public Read<T> withToken(String token) {
+      checkArgument(token != null, "token can not be null");
+      return withToken(ValueProvider.StaticValueProvider.of(token));
     }
 
-    /** Specify the username for authentication. */
-    public Read<T> withUsername(ValueProvider<String> username) {
-      return builder().setUsername(username).build();
-    }
-
-    /** Specify the password used for authentication. */
-    public Read<T> withPassword(String password) {
-      checkArgument(password != null, "password can not be null");
-      return withPassword(ValueProvider.StaticValueProvider.of(password));
-    }
-
-    /** Specify the password used for authentication. */
-    public Read<T> withPassword(ValueProvider<String> password) {
-      return builder().setPassword(password).build();
-    }
-
-    /** Specify the local DC used for the load balancing. */
-    public Read<T> withLocalDc(String localDc) {
-      checkArgument(localDc != null, "localDc can not be null");
-      return withLocalDc(ValueProvider.StaticValueProvider.of(localDc));
-    }
-
-    /** Specify the local DC used for the load balancing. */
-    public Read<T> withLocalDc(ValueProvider<String> localDc) {
-      return builder().setLocalDc(localDc).build();
+    /** Specify the token used for authentication. */
+    public Read<T> withToken(ValueProvider<String> token) {
+      return builder().setToken(token).build();
     }
 
     /** Specify the consistency level for the request (e.g. ONE, LOCAL_ONE, LOCAL_QUORUM, etc). */
@@ -412,7 +335,8 @@ public class CassandraIO {
 
     @Override
     public PCollection<T> expand(PBegin input) {
-      checkArgument((hosts() != null && port() != null) || cloudSecureConnectBundle() != null, "withHosts() and withPort() are required");
+      checkArgument(token() != null, "withToken() is required");
+      checkArgument(cloudSecureConnectBundle() != null, "withCloudSecureConnectBundle() is required");
       checkArgument(keyspace() != null, "withKeyspace() is required");
       checkArgument(table() != null, "withTable() is required");
       checkArgument(entity() != null, "withEntity() is required");
@@ -424,13 +348,13 @@ public class CassandraIO {
               .apply("Create Splits", ParDo.of(new SplitFn<T>()))
               .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}));
 
-      return splits.apply("ReadAll", CassandraIO.<T>readAll().withCoder(coder()));
+      return splits.apply("ReadAll", AstraIO.<T>readAll().withCoder(coder()));
     }
 
     private static class SplitFn<T> extends DoFn<Read<T>, Read<T>> {
       @ProcessElement
       public void process(
-          @Element CassandraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
+              @Element AstraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
         Set<RingRange> ringRanges = getRingRanges(read);
         for (RingRange rr : ringRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
@@ -440,17 +364,12 @@ public class CassandraIO {
       private static <T> Set<RingRange> getRingRanges(Read<T> read) {
         try (Cluster cluster =
             getCluster(
-                read.hosts(),
-                read.port(),
-                read.username(),
-                read.password(),
-                read.localDc(),
+                read.token(),
                 read.consistencyLevel(),
                 read.connectTimeout(),
                 read.readTimeout(),
                 read.cloudSecureConnectBundle())) {
-          if (isMurmur3Partitioner(cluster)) {
-            LOG.info("Murmur3Partitioner detected, splitting");
+
             Integer splitCount;
             if (read.minNumberOfSplits() != null && read.minNumberOfSplits().get() != null) {
               splitCount = read.minNumberOfSplits().get();
@@ -467,45 +386,26 @@ public class CassandraIO {
             return splitGenerator.generateSplits(splitCount, tokens).stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
-
-          } else {
-            LOG.warn(
-                "Only Murmur3Partitioner is supported for splitting, using an unique source for "
-                    + "the read");
-            String partitioner = cluster.getMetadata().getPartitioner();
-            RingRange totalRingRange =
-                RingRange.of(
-                    SplitGenerator.getRangeMin(partitioner),
-                    SplitGenerator.getRangeMax(partitioner));
-            return Collections.singleton(totalRingRange);
-          }
         }
       }
     }
 
     @AutoValue.Builder
     abstract static class Builder<T> {
-      abstract Builder<T> setHosts(ValueProvider<List<String>> hosts);
 
-      abstract Builder<T> setQuery(ValueProvider<String> query);
-
-      abstract Builder<T> setPort(ValueProvider<Integer> port);
+      abstract Builder<T> setToken(ValueProvider<String> token);
 
       abstract Builder<T> setKeyspace(ValueProvider<String> keyspace);
 
       abstract Builder<T> setTable(ValueProvider<String> table);
+
+      abstract Builder<T> setQuery(ValueProvider<String> query);
 
       abstract Builder<T> setEntity(Class<T> entity);
 
       abstract Optional<Class<T>> entity();
 
       abstract Builder<T> setCoder(Coder<T> coder);
-
-      abstract Builder<T> setUsername(ValueProvider<String> username);
-
-      abstract Builder<T> setPassword(ValueProvider<String> password);
-
-      abstract Builder<T> setLocalDc(ValueProvider<String> localDc);
 
       abstract Builder<T> setConsistencyLevel(ValueProvider<String> consistencyLevel);
 
@@ -521,9 +421,6 @@ public class CassandraIO {
 
       abstract Builder<T> setRingRanges(ValueProvider<Set<RingRange>> ringRange);
 
-      /**
-       * Setter for AutoValue to generate and populate the cloudSecureConnectBundlePath.
-       */
       abstract Builder<T> setCloudSecureConnectBundle(ValueProvider<String> cloudSecureConnectBundlePath);
 
       abstract Read<T> autoBuild();
@@ -544,7 +441,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to mutate into Apache Cassandra. See {@link CassandraIO} for details on
+   * A {@link PTransform} to mutate into Apache Cassandra. See {@link AstraIO} for details on
    * usage and configuration.
    */
   @AutoValue
@@ -552,21 +449,12 @@ public class CassandraIO {
   @SuppressWarnings({"rawtypes"})
   public abstract static class Write<T> extends PTransform<PCollection<T>, PDone> {
 
-    abstract @Nullable ValueProvider<List<String>> hosts();
-
-    abstract @Nullable ValueProvider<Integer> port();
+    abstract @Nullable ValueProvider<String> token();
+    abstract @Nullable ValueProvider<String> cloudSecureConnectBundle();
 
     abstract @Nullable ValueProvider<String> keyspace();
 
     abstract @Nullable Class<T> entity();
-
-    abstract @Nullable ValueProvider<String> username();
-
-    abstract @Nullable ValueProvider<String> password();
-
-    abstract @Nullable ValueProvider<String> localDc();
-
-    abstract @Nullable ValueProvider<String> consistencyLevel();
 
     abstract MutationType mutationType();
 
@@ -576,52 +464,26 @@ public class CassandraIO {
 
     abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
 
-    /**
-     * Initialize a 2-way SSL connection over SNI with the cloud service.
-     */
-    @Nullable
-    abstract ValueProvider<String> cloudSecureConnectBundle();
-
     abstract Builder<T> builder();
 
     static <T> Builder<T> builder(MutationType mutationType) {
-      return new AutoValue_CassandraIO_Write.Builder<T>().setMutationType(mutationType);
+      return new AutoValue_AstraIO_Write.Builder<T>().setMutationType(mutationType);
     }
 
-    /** Specify the Cassandra instance hosts where to write data. */
-    public Write<T> withHosts(List<String> hosts) {
+    /** Specify the Cassandra keyspace where to write data. */
+    public Write<T> withToken(String token) {
       checkArgument(
-          hosts != null,
-          "CassandraIO." + getMutationTypeName() + "().withHosts(hosts) called with null hosts");
-      checkArgument(
-          !hosts.isEmpty(),
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withHosts(hosts) called with empty "
-              + "hosts list");
-      return withHosts(ValueProvider.StaticValueProvider.of(hosts));
+              token != null,
+              "AstraIO."
+                      + getMutationTypeName()
+                      + "().withToken(token) called with "
+                      + "null token");
+      return withToken(ValueProvider.StaticValueProvider.of(token));
     }
 
-    /** Specify the hosts of the Apache Cassandra instances. */
-    public Write<T> withHosts(ValueProvider<List<String>> hosts) {
-      return builder().setHosts(hosts).build();
-    }
-
-    /** Specify the Cassandra instance port number where to write data. */
-    public Write<T> withPort(int port) {
-      checkArgument(
-          port > 0,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withPort(port) called with invalid port "
-              + "number (%s)",
-          port);
-      return withPort(ValueProvider.StaticValueProvider.of(port));
-    }
-
-    /** Specify the port number of the Apache Cassandra instances. */
-    public Write<T> withPort(ValueProvider<Integer> port) {
-      return builder().setPort(port).build();
+    /** Specify the Cassandra keyspace where to read data. */
+    public Write<T> withToken(ValueProvider<String> token) {
+      return builder().setToken(token).build();
     }
 
     /** Specify the Cassandra keyspace where to write data. */
@@ -641,7 +503,7 @@ public class CassandraIO {
     }
 
     /**
-     * Specify the entity class in the input {@link PCollection}. The {@link CassandraIO} will map
+     * Specify the entity class in the input {@link PCollection}. The {@link AstraIO} will map
      * this entity to the Cassandra table thanks to the annotations.
      */
     public Write<T> withEntity(Class<T> entity) {
@@ -652,70 +514,6 @@ public class CassandraIO {
               + "().withEntity(entity) called with null "
               + "entity");
       return builder().setEntity(entity).build();
-    }
-
-    /** Specify the username used for authentication. */
-    public Write<T> withUsername(String username) {
-      checkArgument(
-          username != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withUsername(username) called with "
-              + "null username");
-      return withUsername(ValueProvider.StaticValueProvider.of(username));
-    }
-
-    /** Specify the username for authentication. */
-    public Write<T> withUsername(ValueProvider<String> username) {
-      return builder().setUsername(username).build();
-    }
-
-    /** Specify the password used for authentication. */
-    public Write<T> withPassword(String password) {
-      checkArgument(
-          password != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withPassword(password) called with "
-              + "null password");
-      return withPassword(ValueProvider.StaticValueProvider.of(password));
-    }
-
-    /** Specify the password used for authentication. */
-    public Write<T> withPassword(ValueProvider<String> password) {
-      return builder().setPassword(password).build();
-    }
-
-    /** Specify the local DC used by the load balancing policy. */
-    public Write<T> withLocalDc(String localDc) {
-      checkArgument(
-          localDc != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withLocalDc(localDc) called with null"
-              + " localDc");
-      return withLocalDc(ValueProvider.StaticValueProvider.of(localDc));
-    }
-
-    /** Specify the local DC used for the load balancing. */
-    public Write<T> withLocalDc(ValueProvider<String> localDc) {
-      return builder().setLocalDc(localDc).build();
-    }
-
-    /** Specify the consistency level for the request (e.g. ONE, LOCAL_ONE, LOCAL_QUORUM, etc). */
-    public Write<T> withConsistencyLevel(String consistencyLevel) {
-      checkArgument(
-          consistencyLevel != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "().withConsistencyLevel"
-              + "(consistencyLevel) called with null consistencyLevel");
-      return withConsistencyLevel(ValueProvider.StaticValueProvider.of(consistencyLevel));
-    }
-
-    /** Specify the consistency level for the request (e.g. ONE, LOCAL_ONE, LOCAL_QUORUM, etc). */
-    public Write<T> withConsistencyLevel(ValueProvider<String> consistencyLevel) {
-      return builder().setConsistencyLevel(consistencyLevel).build();
     }
 
     /** Cassandra client socket option for connect timeout in ms. */
@@ -769,7 +567,7 @@ public class CassandraIO {
     public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
       checkArgument(
           mapperFactoryFn != null,
-          "CassandraIO."
+          "AstraIO."
               + getMutationTypeName()
               + "().mapperFactoryFn"
               + "(mapperFactoryFn) called with null value");
@@ -778,26 +576,22 @@ public class CassandraIO {
 
     @Override
     public void validate(PipelineOptions pipelineOptions) {
+
       checkState(
-          hosts() != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "() requires a list of hosts to be set via withHosts(hosts)");
-      checkState(
-          port() != null,
-          "CassandraIO."
-              + getMutationTypeName()
-              + "() requires a "
-              + "valid port number to be set via withPort(port)");
+              token() != null,
+              "AstraIO."
+                      + getMutationTypeName()
+                      + "() requires a token to be set via "
+                      + "withToken(token)");
       checkState(
           keyspace() != null,
-          "CassandraIO."
+          "AstraIO."
               + getMutationTypeName()
               + "() requires a keyspace to be set via "
               + "withKeyspace(keyspace)");
       checkState(
           entity() != null,
-          "CassandraIO."
+          "AstraIO."
               + getMutationTypeName()
               + "() requires an entity to be set via "
               + "withEntity(entity)");
@@ -822,23 +616,13 @@ public class CassandraIO {
     @AutoValue.Builder
     abstract static class Builder<T> {
 
-      abstract Builder<T> setHosts(ValueProvider<List<String>> hosts);
-
-      abstract Builder<T> setPort(ValueProvider<Integer> port);
+      abstract Builder<T> setToken(ValueProvider<String> token);
 
       abstract Builder<T> setKeyspace(ValueProvider<String> keyspace);
 
       abstract Builder<T> setEntity(Class<T> entity);
 
       abstract Optional<Class<T>> entity();
-
-      abstract Builder<T> setUsername(ValueProvider<String> username);
-
-      abstract Builder<T> setPassword(ValueProvider<String> password);
-
-      abstract Builder<T> setLocalDc(ValueProvider<String> localDc);
-
-      abstract Builder<T> setConsistencyLevel(ValueProvider<String> consistencyLevel);
 
       abstract Builder<T> setMutationType(MutationType mutationType);
 
@@ -928,18 +712,10 @@ public class CassandraIO {
   }
 
   /**
-   * Get a Cassandra cluster using either hosts and port or cloudSecureBundle.
+   * Get a Astra cluster using either hosts and port or cloudSecureBundle.
    *
-   * @param hosts
-   *    contact points (local configuration)
-   * @param port
-   *    connection port (local configuration)
-   * @param localDc
-   *    local datacenter (local configuration)
-   * @param username
-   *    username (or clientID)
-   * @param password
-   *    password (or clientSecret)
+   * @param token
+   *    token (or clientSecret)
    * @param consistencyLevel
    *    consistency level
    * @param connectTimeout
@@ -952,37 +728,17 @@ public class CassandraIO {
    *    cassandra cluster
    */
   static Cluster getCluster(
-      ValueProvider<List<String>> hosts,
-      ValueProvider<Integer> port,
-      ValueProvider<String> username,
-      ValueProvider<String> password,
-      ValueProvider<String> localDc,
+      ValueProvider<String> token,
       ValueProvider<String> consistencyLevel,
       ValueProvider<Integer> connectTimeout,
       ValueProvider<Integer> readTimeout,
       ValueProvider<String> cloudSecureConnectBundlePath) {
 
     Cluster.Builder builder = Cluster.builder();
-    if (cloudSecureConnectBundlePath != null) {
-      // The Bundle is enough to set up to connection with cluster and dc.
-      builder.withCloudSecureConnectBundle(new File(cloudSecureConnectBundlePath.get()));
-
-    } else {
-      builder.addContactPoints(hosts.get().toArray(new String[0])).withPort(port.get());
-      DCAwareRoundRobinPolicy.Builder dcAwarePolicyBuilder = new DCAwareRoundRobinPolicy.Builder();
-      if (localDc != null) {
-        dcAwarePolicyBuilder.withLocalDc(localDc.get());
-      }
-      builder.withLoadBalancingPolicy(new TokenAwarePolicy(dcAwarePolicyBuilder.build()));
-    }
-
-    if (username != null) {
-      builder.withAuthProvider(new PlainTextAuthProvider(username.get(), password.get()));
-    }
-
+    builder.withCloudSecureConnectBundle(new File(cloudSecureConnectBundlePath.get()));
+    builder.withAuthProvider(new PlainTextAuthProvider("token", token.get()));
     if (consistencyLevel != null) {
-      builder.withQueryOptions(
-          new QueryOptions().setConsistencyLevel(ConsistencyLevel.valueOf(consistencyLevel.get())));
+      builder.withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.valueOf(consistencyLevel.get())));
     }
 
     SocketOptions socketOptions = new SocketOptions();
@@ -1016,19 +772,14 @@ public class CassandraIO {
 
     Mutator(Write<T> spec, BiFunction<Mapper<T>, T, Future<Void>> mutator, String operationName) {
       // If a cloudSecureConnectBundle is specified some parameters need to be enforced (for write)
-      if (spec.cloudSecureConnectBundle() != null) {
-        spec.withConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM.name());
-      }
+
       this.cluster = getCluster(
-                        spec.hosts(),
-                        spec.port(),
-                        spec.username(),
-                        spec.password(),
-                        spec.localDc(),
-                        spec.consistencyLevel(),
+                        spec.token(),
+                        ValueProvider.StaticValueProvider.of(ConsistencyLevel.LOCAL_QUORUM.name()),
                         spec.connectTimeout(),
                         spec.readTimeout(),
                         spec.cloudSecureConnectBundle());
+
       this.session = cluster.connect(spec.keyspace().get());
       this.mapperFactoryFn = spec.mapperFactoryFn();
       this.mutateFutures = new ArrayList<>();
@@ -1083,7 +834,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link CassandraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
    * information on usage and configuration.
    */
   @AutoValue

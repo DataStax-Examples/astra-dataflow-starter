@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.astra;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.astra.AstraIO.Read;
 import org.apache.beam.sdk.options.ValueProvider;
 
 @SuppressWarnings({
@@ -48,15 +48,9 @@ public class ConnectionManager {
   }
 
   private static String readToClusterHash(Read<?> read) {
-    if (read.cloudSecureConnectBundle() == null) {
-      return Objects.requireNonNull(read.hosts()).get().stream().reduce(",", (a, b) -> a + b)
-              + Objects.requireNonNull(read.port()).get()
-              + safeVPGet(read.localDc())
-              + safeVPGet(read.consistencyLevel());
-    } else {
-      // With a cloud secure bundle the host and port are null
-      return Objects.requireNonNull(read.cloudSecureConnectBundle()).get();
-    }
+    return Objects.requireNonNull(read.token()).get()
+            + Objects.requireNonNull(read.cloudSecureConnectBundle()).get()
+            + safeVPGet(read.consistencyLevel());
   }
 
   private static String readToSessionHash(Read<?> read) {
@@ -68,12 +62,8 @@ public class ConnectionManager {
         clusterMap.computeIfAbsent(
             readToClusterHash(read),
             k ->
-                CassandraIO.getCluster(
-                    Objects.requireNonNull(read.hosts()),
-                    Objects.requireNonNull(read.port()),
-                    read.username(),
-                    read.password(),
-                    read.localDc(),
+                AstraIO.getCluster(
+                    read.token(),
                     read.consistencyLevel(),
                     read.connectTimeout(),
                     read.readTimeout(),

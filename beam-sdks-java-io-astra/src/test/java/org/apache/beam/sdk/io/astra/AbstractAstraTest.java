@@ -5,10 +5,13 @@ package org.apache.beam.sdk.io.astra;
  */
 public abstract class AbstractAstraTest {
 
-    public static final String DB_ID      = "fc081b77-c1a7-4900-87e3-26f072baa465";
+    public static final String TOKEN            = "AstraCS:uZclXTYecCAqPPjiNmkezapR:e87d6edb702acd87516e4ef78e0c0e515c32ab2c3529f5a3242688034149a0e4";
+    public static final String ASTRA_ZIP_FILE   = "/Users/cedricklunven/Downloads/demo.zip";
+    public static final String ASTRA_KEYSPACE   = "demo";
 
+
+    public static final String DB_ID      = "b7f39b71-77f6-433d-b19b-00e06aa492b3";
     public static final String DB_REGION  = "us-east1";
 
-    public static final String TOKEN      = "AstraCS:IjjSfFRRunnQZBxoAWzCvumX:0898b151bd33eb7f5bafe4ab97c0cea15318c04cf03530beb788c698b557193b";
 
 }

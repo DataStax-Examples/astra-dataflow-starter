@@ -1,7 +1,6 @@
 package org.apache.beam.sdk.io.astra;
 
 import com.datastax.astra.sdk.AstraClient;
-import io.stargate.sdk.grpc.domain.QueryGrpc;
 import io.stargate.sdk.grpc.domain.ResultSetGrpc;
 import io.stargate.sdk.grpc.domain.RowGrpc;
 import org.junit.Test;
@@ -9,7 +8,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public class SampleJavaSdk extends AbstractAstraTest {
+public class GrpcConnectivityTest extends AbstractAstraTest {
 
     @Test
     public void testGrpcWithSDK() {
@@ -21,9 +20,9 @@ public class SampleJavaSdk extends AbstractAstraTest {
                 .build()) {
             ResultSetGrpc resGrpc = astraClient
                     .apiStargateGrpc()
-                    .execute("SELECT * from ks1.user");
+                    .execute("SELECT * from demo.cities_by_country LIMIT 10");
             for(RowGrpc row : resGrpc.getResults()) {
-                System.out.println(row.getString("email"));
+                System.out.println(row.getString("country_name"));
             }
         }
     }

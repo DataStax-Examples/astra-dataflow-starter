@@ -142,11 +142,7 @@
         <artifactId>achilles-junit</artifactId>
         <version>${achilles.version}</version>
       </dependency>
-      <dependency>
-        <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-io-common</artifactId>
-        <version>${beam.version}</version>
-      </dependency>
+
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
@@ -162,6 +158,11 @@
       <dependency>
         <groupId>com.google.auto.value</groupId>
         <artifactId>auto-value</artifactId>
+        <version>${auto-value.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.auto.value</groupId>
+        <artifactId>auto-value-annotations</artifactId>
         <version>${auto-value.version}</version>
       </dependency>
 

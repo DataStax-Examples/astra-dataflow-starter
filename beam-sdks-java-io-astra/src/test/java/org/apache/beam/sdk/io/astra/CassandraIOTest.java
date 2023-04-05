@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.astra;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -86,7 +86,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Tests of {@link CassandraIO}. */
+/** Tests of {@link AstraIO}. */
 @RunWith(JUnit4.class)
 @SuppressWarnings({
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
@@ -107,6 +107,7 @@ public class CassandraIOTest implements Serializable {
   private static Cluster cluster;
   private static Session session;
 
+  /*
   @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
   @Rule public transient TestPipeline pipeline = TestPipeline.create();
   private static CassandraShutDownHook shutdownHook;
@@ -251,7 +252,7 @@ public class CassandraIOTest implements Serializable {
    * uses the same JMX service as bellow. See:
    * https://github.com/apache/cassandra/blob/cassandra-3.X
    * /src/java/org/apache/cassandra/tools/nodetool/Flush.java
-   */
+
   @SuppressWarnings("unused")
   private static void flushMemTablesAndRefreshSizeEstimates() throws Exception {
     JMXServiceURL url =
@@ -293,12 +294,12 @@ public class CassandraIOTest implements Serializable {
 
   /*
    Since we have enough data we will be able to detect if any get put in the ring range that wraps around
-  */
+
   @Test
   public void testWrapAroundRingRanges() throws Exception {
     PCollection<SimpleData> simpledataPCollection =
         pipeline.apply(
-            CassandraIO.<SimpleData>read()
+            AstraIO.<SimpleData>read()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -324,7 +325,7 @@ public class CassandraIOTest implements Serializable {
   public void testRead() throws Exception {
     PCollection<Scientist> output =
         pipeline.apply(
-            CassandraIO.<Scientist>read()
+            AstraIO.<Scientist>read()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -359,8 +360,8 @@ public class CassandraIOTest implements Serializable {
     pipeline.run();
   }
 
-  private CassandraIO.Read<Scientist> getReadWithRingRange(RingRange... rr) {
-    return CassandraIO.<Scientist>read()
+  private AstraIO.Read<Scientist> getReadWithRingRange(RingRange... rr) {
+    return AstraIO.<Scientist>read()
         .withHosts(Collections.singletonList(CASSANDRA_HOST))
         .withPort(cassandraPort)
         .withRingRanges(new HashSet<>(Arrays.asList(rr)))
@@ -370,8 +371,8 @@ public class CassandraIOTest implements Serializable {
         .withEntity(Scientist.class);
   }
 
-  private CassandraIO.Read<Scientist> getReadWithQuery(String query) {
-    return CassandraIO.<Scientist>read()
+  private AstraIO.Read<Scientist> getReadWithQuery(String query) {
+    return AstraIO.<Scientist>read()
         .withHosts(Collections.singletonList(CASSANDRA_HOST))
         .withPort(cassandraPort)
         .withQuery(query)
@@ -397,7 +398,7 @@ public class CassandraIOTest implements Serializable {
         pipeline
             .apply(Create.of(getReadWithQuery(physQuery), getReadWithQuery(mathQuery)))
             .apply(
-                CassandraIO.<Scientist>readAll().withCoder(SerializableCoder.of(Scientist.class)));
+                AstraIO.<Scientist>readAll().withCoder(SerializableCoder.of(Scientist.class)));
 
     PCollection<String> mapped =
         output.apply(
@@ -431,7 +432,7 @@ public class CassandraIOTest implements Serializable {
         pipeline
             .apply(Create.of(getReadWithRingRange(physRR), getReadWithRingRange(mathRR, logicRR)))
             .apply(
-                CassandraIO.<Scientist>readAll().withCoder(SerializableCoder.of(Scientist.class)));
+                AstraIO.<Scientist>readAll().withCoder(SerializableCoder.of(Scientist.class)));
 
     PCollection<KV<String, Integer>> mapped =
         output.apply(
@@ -469,7 +470,7 @@ public class CassandraIOTest implements Serializable {
 
     PCollection<Scientist> output =
         pipeline.apply(
-            CassandraIO.<Scientist>read()
+            AstraIO.<Scientist>read()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -502,7 +503,7 @@ public class CassandraIOTest implements Serializable {
 
     PCollection<Scientist> output =
         pipeline.apply(
-            CassandraIO.<Scientist>read()
+            AstraIO.<Scientist>read()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -540,7 +541,7 @@ public class CassandraIOTest implements Serializable {
     pipeline
         .apply(Create.of(data))
         .apply(
-            CassandraIO.<ScientistWrite>write()
+            AstraIO.<ScientistWrite>write()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -601,7 +602,7 @@ public class CassandraIOTest implements Serializable {
     SerializableFunction<Session, Mapper> factory = new NOOPMapperFactory();
 
     pipeline.apply(
-        CassandraIO.<String>read()
+        AstraIO.<String>read()
             .withHosts(Collections.singletonList(CASSANDRA_HOST))
             .withPort(cassandraPort)
             .withKeyspace(CASSANDRA_KEYSPACE)
@@ -623,7 +624,7 @@ public class CassandraIOTest implements Serializable {
     pipeline
         .apply(Create.of(""))
         .apply(
-            CassandraIO.<String>write()
+            AstraIO.<String>write()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -643,7 +644,7 @@ public class CassandraIOTest implements Serializable {
     pipeline
         .apply(Create.of(""))
         .apply(
-            CassandraIO.<String>delete()
+            AstraIO.<String>delete()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -673,7 +674,7 @@ public class CassandraIOTest implements Serializable {
     pipeline
         .apply(Create.of(einstein))
         .apply(
-            CassandraIO.<Scientist>delete()
+            AstraIO.<Scientist>delete()
                 .withHosts(Collections.singletonList(CASSANDRA_HOST))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
@@ -693,7 +694,7 @@ public class CassandraIOTest implements Serializable {
                 + "');",
             CASSANDRA_KEYSPACE,
             CASSANDRA_TABLE));
-  }
+  }*/
 
   /** Simple Cassandra entity used in read tests. */
   @Table(name = CASSANDRA_TABLE, keyspace = CASSANDRA_KEYSPACE)

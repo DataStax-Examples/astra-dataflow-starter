@@ -5,7 +5,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.metadata.token.TokenRange;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -35,11 +35,10 @@ public class CqlSessionTokenRangesTest extends AbstractAstraTest {
             boolean first = true;
             for (TokenRange subRange : cqlSession.getMetadata().getTokenMap().get().getTokenRanges()) {
 
-
                 if (first) {
                     ResultSet rs = cqlSession.execute(
-                            "SELECT * FROM ks1.user " +
-                                    "WHERE token(email) >= ? and token(email) <= ?",
+                            "SELECT * FROM demo.cities_by_country " +
+                                    "WHERE token(country_name) >= ? and token(country_name) <= ?",
                             MIN, subRange.getStart());
                     System.out.println(MIN + "-" + subRange.getStart());
                     first = false;
@@ -47,15 +46,15 @@ public class CqlSessionTokenRangesTest extends AbstractAstraTest {
                 }
 
                 ResultSet rs = cqlSession.execute(
-                        "SELECT * FROM ks1.user " +
-                               "WHERE token(email) >= ? and token(email) <= ?",
+                        "SELECT * FROM demo.cities_by_country" +
+                               " WHERE token(country_name) >= ? and token(country_name) <= ?",
                        subRange.getStart(),
                         subRange.getStart().compareTo(subRange.getEnd()) > 0 ? MAX : subRange.getEnd());
                 rows.addAll(rs.all());
             }
 
             for(Row row: rows) {
-                System.out.println(row.getString("email"));
+                System.out.println(row.getString("country_name"));
             }
         }
     }

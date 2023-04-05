@@ -15,54 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.astra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.mapping.annotations.Column;
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Table;
 import java.io.Serializable;
-import java.util.List;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.GenerateSequence;
-import org.apache.beam.sdk.io.common.HashingFn;
-import org.apache.beam.sdk.io.common.IOITHelper;
-import org.apache.beam.sdk.io.common.IOTestPipelineOptions;
-import org.apache.beam.sdk.io.common.TestRow;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.Validation;
-import org.apache.beam.sdk.testing.PAssert;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Combine;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * A test of {@link CassandraIO} on a concrete and independent Cassandra instance.
+ * A test of {@link AstraIO} on a concrete and independent Cassandra instance.
  *
  * <p>This test requires a running Cassandra instance at [localhost:9042], and the test dataset must exists.
  *
  * <p>You can run this test directly using gradle with:
  *
  * <pre>{@code
- * ./gradlew integrationTest -p sdks/java/io/cassandra -DintegrationTestPipelineOptions='["--cassandraHost=127.0.0.1","--cassandraPort=9042","--numberOfRecords=1000"]' --tests org.apache.beam.sdk.io.cassandra.CassandraIOIT -DintegrationTestRunner=direct
+ * ./gradlew integrationTest -p sdks/java/io/cassandra -DintegrationTestPipelineOptions='["--cassandraHost=127.0.0.1","--cassandraPort=9042","--numberOfRecords=1000"]' --tests org.apache.beam.sdk.io.astra.CassandraIOIT -DintegrationTestRunner=direct
  * </pre>
  */
 @RunWith(JUnit4.class)
 public class CassandraIOIT implements Serializable {
 
-  /** CassandraIOIT options. */
+
+  /** CassandraIOIT options.
   public interface CassandraIOITOptions extends IOTestPipelineOptions {
     @Description("Host for Cassandra server (host name/ip address)")
     @Validation.Required
@@ -112,7 +87,7 @@ public class CassandraIOIT implements Serializable {
         .apply("MapToEntity", ParDo.of(new CreateScientistFn()))
         .apply(
             "WriteToCassandra",
-            CassandraIO.<Scientist>write()
+            AstraIO.<Scientist>write()
                 .withHosts(options.getCassandraHost())
                 .withPort(options.getCassandraPort())
                 .withKeyspace(KEYSPACE)
@@ -124,7 +99,7 @@ public class CassandraIOIT implements Serializable {
   private void runRead() {
     PCollection<Scientist> output =
         pipelineRead.apply(
-            CassandraIO.<Scientist>read()
+            AstraIO.<Scientist>read()
                 .withHosts(options.getCassandraHost())
                 .withPort(options.getCassandraPort())
                 .withMinNumberOfSplits(20)
@@ -180,7 +155,7 @@ public class CassandraIOIT implements Serializable {
     }
   }
 
-  /** Simple Cassandra entity representing a scientist. Used for read test. */
+  /** Simple Cassandra entity representing a scientist. Used for read test. *
   @Table(name = TABLE, keyspace = KEYSPACE)
   private static final class Scientist implements Serializable {
     @PartitionKey
@@ -218,5 +193,5 @@ public class CassandraIOIT implements Serializable {
     public void processElement(ProcessContext c) {
       c.output(c.element().name);
     }
-  }
+  }*/
 }

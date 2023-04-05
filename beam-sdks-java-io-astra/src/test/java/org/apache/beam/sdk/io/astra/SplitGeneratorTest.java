@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.astra;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,6 +24,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.beam.sdk.io.astra.RingRange;
+import org.apache.beam.sdk.io.astra.SplitGenerator;
 import org.junit.Test;
 
 /** Tests on {@link SplitGenerator}. */
