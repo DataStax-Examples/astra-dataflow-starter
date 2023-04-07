@@ -12,7 +12,6 @@
   <modules>
     <module>beam-sdks-astra-demo</module>
     <module>beam-sdks-java-io-astra</module>
-    <module>beam-sdks-samples</module>
   </modules>
 
   <properties>
@@ -68,8 +67,13 @@
       </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-io-common</artifactId>
-        <version>2.45.0</version>
+        <artifactId>beam-sdks-java-core</artifactId>
+        <version>${beam.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+        <version>${beam.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
@@ -81,11 +85,7 @@
         <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
         <version>${beam.version}</version>
       </dependency>
-      <dependency>
-        <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-        <version>${beam.version}</version>
-      </dependency>
+
 
       <!-- Logging -->
       <dependency>

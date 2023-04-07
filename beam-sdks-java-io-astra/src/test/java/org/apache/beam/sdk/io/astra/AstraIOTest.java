@@ -29,7 +29,13 @@ import static org.junit.Assert.assertEquals;
  * Testing for AstraIO using CQL.
  */
 @RunWith(JUnit4.class)
-public class AstraIOTest extends AbstractAstraTest implements Serializable {
+public class AstraIOTest implements Serializable {
+
+    // --> Static Configuration
+    public static final String TOKEN            = "AstraCS:uZclXTYecCAqPPjiNmkezapR:e87d6edb702acd87516e4ef78e0c0e515c32ab2c3529f5a3242688034149a0e4";
+    public static final String ASTRA_ZIP_FILE   = "/Users/cedricklunven/Downloads/scb-demo.zip";
+    public static final String ASTRA_KEYSPACE   = "demo";
+    // <--
 
     /** Logger for the Class. */
     private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
@@ -38,7 +44,13 @@ public class AstraIOTest extends AbstractAstraTest implements Serializable {
      * Pipeline reference
      */
     @Rule
-    public transient TestPipeline pipeline = TestPipeline.create();
+    public transient TestPipeline pipelineWrite = TestPipeline.create();
+
+    /**
+     * Pipeline reference
+     */
+    @Rule
+    public transient TestPipeline pipelineRead = TestPipeline.create();
 
     /**
      * Cassandra control connection
@@ -48,39 +60,22 @@ public class AstraIOTest extends AbstractAstraTest implements Serializable {
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        LOG.info("INITIALIZATION, Please Wait...");
-        cluster = Cluster.builder()
-                .withCloudSecureConnectBundle(new File(ASTRA_ZIP_FILE))
-                .withCredentials("token", TOKEN)
-                .build();
-        LOG.info("+ Cluster Created");
+        cluster = AstraIOTestUtils.createCluster(ASTRA_ZIP_FILE, TOKEN);
         session = cluster.connect(ASTRA_KEYSPACE);
-        LOG.info("+ Connected to Keyspace {}" ,session.getLoggedKeyspace());
-
-        session.execute("CREATE TABLE IF NOT EXISTS simpledata (id int PRIMARY KEY, data text);");
-        LOG.info("+ Table created (if needed).");
-
-        session.execute("TRUNCATE TABLE simpledata;");
-        LOG.info("+ Table truncated");
+        AstraIOTestUtils.createTable(session);
+        AstraIOTestUtils.truncateTable(session);
     }
 
     @Test
     public void shouldWriteIntoAstra() {
         LOG.info("WRITE DATA INTO ASTRA");
-        int numRow = 10;
-        List<SimpleDataEntity> data = IntStream
-                 .range(1, numRow)
-                 .boxed()
-                 .map(i -> new SimpleDataEntity(i, "something funny with " + i))
-                .collect(Collectors.toList());
-
-        pipeline.apply(Create.of(data))
+        pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
                 .apply(AstraIO.<SimpleDataEntity>write()
                         .withToken(TOKEN)
                         .withCloudSecureConnectBundle(ASTRA_ZIP_FILE)
                         .withKeyspace(ASTRA_KEYSPACE)
                         .withEntity(SimpleDataEntity.class));
-        pipeline.run();
+        pipelineWrite.run().waitUntilFinish();
 
         List<Row> results = session.execute("SELECT * FROM simpledata").all();
         for (Row r : results) {
@@ -90,11 +85,11 @@ public class AstraIOTest extends AbstractAstraTest implements Serializable {
 
     @Test
     public void shouldReadFromAstra() {
-        System.out.println("Test Read");
-        TestPipeline pipeline = TestPipeline.create();
-        System.out.println("+ Pipeline created");
+        LOG.info("READ DATA FROM ASTRA");
+        pipelineRead = TestPipeline.create();
+        LOG.info("+ Pipeline created");
         PCollection<SimpleDataEntity> simpleDataPCollection =
-                pipeline.apply(AstraIO.<SimpleDataEntity>read()
+                pipelineRead.apply(AstraIO.<SimpleDataEntity>read()
                                 .withToken(TOKEN)
                                 .withCloudSecureConnectBundle(ASTRA_ZIP_FILE)
                                 .withKeyspace(ASTRA_KEYSPACE)
@@ -102,8 +97,18 @@ public class AstraIOTest extends AbstractAstraTest implements Serializable {
                                 .withMinNumberOfSplits(50)
                                 .withCoder(SerializableCoder.of(SimpleDataEntity.class))
                                 .withEntity(SimpleDataEntity.class));
+        // Results ?
         PAssert.thatSingleton(simpleDataPCollection.apply("Count", Count.globally())).isEqualTo(2L);
-        System.out.println(simpleDataPCollection.expand());
+
+        // Count number of items
+        //PAssert.thatMap()
+        //simpleDataPCollection.
+        //LOG.info("+ OK");
+    }
+
+    @Test
+    public void shouldReadWithQueryFromAstra() {
+
     }
 
     @AfterClass

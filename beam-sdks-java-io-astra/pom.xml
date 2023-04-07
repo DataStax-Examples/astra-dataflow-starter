@@ -3,7 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.apache.beam</groupId>
+  <groupId>com.datastax.astra</groupId>
   <artifactId>beam-sdks-java-io-astra</artifactId>
   <name>+ beam-sdks-java-io-astra</name>
   <packaging>jar</packaging>
@@ -19,10 +19,6 @@
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.1.0</maven-shade-plugin.version>
     <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-
-    <mockito.version>3.7.7</mockito.version>
-    <pubsub.version>v1-rev20220904-2.0.0</pubsub.version>
-
   </properties>
 
   <dependencies>
@@ -63,11 +59,6 @@
       <artifactId>junit</artifactId>
       <version>4.13.2</version>
     </dependency>
-    <dependency>
-      <groupId>info.archinnov</groupId>
-      <artifactId>achilles-junit</artifactId>
-      <scope>test</scope>
-    </dependency>
 
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -83,8 +74,6 @@
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
-
-      <!-- Makes the DirectRunner available when running a pipeline. -->
       <dependencies>
         <dependency>
           <groupId>org.apache.beam</groupId>
