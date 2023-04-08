@@ -16,28 +16,28 @@ import java.util.stream.IntStream;
 public class AstraIOTestUtils {
 
     /** Logger for the Class. */
-    private static final Logger LOG = LoggerFactory.getLogger(AstraIOTestUtils.class);
+    private static  Logger LOG = LoggerFactory.getLogger(AstraIOTestUtils.class);
 
-    public static final Cluster createCluster(String secureConnect, String token) {
+    public static Cluster createCluster(File secureConnect, String token) {
         LOG.info("INITIALIZATION, Please Wait...");
         Cluster cluster = Cluster.builder()
-                .withCloudSecureConnectBundle(new File(secureConnect))
+                .withCloudSecureConnectBundle(secureConnect)
                 .withCredentials("token", token)
                 .build();
         LOG.info("+ Cluster Created");
         return cluster;
     }
-    public static final void createTable(Session session) {
+    public static void createTable(Session session) {
         session.execute("CREATE TABLE IF NOT EXISTS simpledata (id int PRIMARY KEY, data text);");
         LOG.info("+ Table created (if needed).");
     }
 
-    public static final void truncateTable(Session session) {
+    public static void truncateTable(Session session) {
         session.execute("TRUNCATE TABLE simpledata;");
         LOG.info("+ Table truncated");
     }
 
-    public static final List<SimpleDataEntity> generateTestData(int numRows) {
+    public static List<SimpleDataEntity> generateTestData(int numRows) {
         return IntStream
                 .range(1, numRows)
                 .boxed()

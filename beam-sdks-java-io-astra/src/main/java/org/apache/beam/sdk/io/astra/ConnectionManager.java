@@ -21,7 +21,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.beam.sdk.io.astra.AstraIO.Read;
+import org.apache.beam.sdk.io.astra.AstraCqlIO.Read;
 import org.apache.beam.sdk.options.ValueProvider;
 
 @SuppressWarnings({
@@ -49,7 +49,6 @@ public class ConnectionManager {
 
   private static String readToClusterHash(Read<?> read) {
     return Objects.requireNonNull(read.token()).get()
-            + Objects.requireNonNull(read.cloudSecureConnectBundle()).get()
             + safeVPGet(read.consistencyLevel());
   }
 
@@ -62,12 +61,14 @@ public class ConnectionManager {
         clusterMap.computeIfAbsent(
             readToClusterHash(read),
             k ->
-                AstraIO.getCluster(
+                AstraCqlIO.getCluster(
                     read.token(),
                     read.consistencyLevel(),
                     read.connectTimeout(),
                     read.readTimeout(),
-                    read.cloudSecureConnectBundle()));
+                    read.secureConnectBundleFile(),
+                    read.secureConnectBundleUrl(),
+                    read.secureConnectBundleStream()));
     return sessionMap.computeIfAbsent(
         readToSessionHash(read),
         k -> cluster.connect(Objects.requireNonNull(read.keyspace()).get()));

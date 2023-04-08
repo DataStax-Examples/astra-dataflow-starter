@@ -31,7 +31,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * <p>To Implement a custom mapper you need to: 1) Create an implementation of {@link Mapper}. 2)
  * Create a {@link SerializableFunction} that instantiates the {@link Mapper} for a given Session,
  * for an example see {@link DefaultObjectMapperFactory}). 3) Pass this function to {@link
- * AstraIO.Read#withMapperFactoryFn(SerializableFunction)} in the CassandraIO builder. <br>
+ * AstraCqlIO.Read#withMapperFactoryFn(SerializableFunction)} in the CassandraIO builder. <br>
  * Example:
  *
  * <pre>{@code

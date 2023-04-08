@@ -4,6 +4,8 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
 
+import java.io.File;
+
 /**
  * Working Against Astra
  */
@@ -11,8 +13,8 @@ public interface AstraIOTestOptions extends TestPipelineOptions {
 
     @Description("Secure Connect Bundle")
     @Validation.Required
-    String getSecureConnectBundle();
-    void setSecureConnectBundle(String path);
+    File getSecureConnectBundle();
+    void setSecureConnectBundle(File path);
 
     @Description("Astra Token")
     @Validation.Required

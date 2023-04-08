@@ -37,8 +37,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.InputStream;
 import java.math.BigInteger;
-import java.util.*;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
@@ -48,81 +53,29 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 /**
- * An IO to read and write from/to Apache Cassandra
- *
- * <h3>Reading from Apache Cassandra</h3>
- *
- * <p>{@code CassandraIO} provides a source to read and returns a bounded collection of entities as
- * {@code PCollection<Entity>}. An entity is built by Cassandra mapper ({@code
- * com.datastax.driver.mapping.EntityMapper}) based on a POJO containing annotations (as described
- * http://docs.datastax .com/en/developer/java-driver/2.1/manual/object_mapper/creating/").
- *
- * <p>The following example illustrates various options for configuring the IO:
- *
- * <pre>{@code
- * pipeline.apply(CassandraIO.<Person>read()
- *     .withHosts(Arrays.asList("host1", "host2"))
- *     .withPort(9042)
- *     .withKeyspace("beam")
- *     .withTable("Person")
- *     .withEntity(Person.class)
- *     .withCoder(SerializableCoder.of(Person.class))
- *     // above options are the minimum set, returns PCollection<Person>
- *
- * }</pre>
- *
- * <p>Alternatively, one may use {@code CassandraIO.<Person>readAll()
- * .withCoder(SerializableCoder.of(Person.class))} to query a subset of the Cassandra database by
- * creating a PCollection of {@code CassandraIO.Read<Person>} each with their own query or
- * RingRange.
- *
- * <h3>Writing to Apache Cassandra</h3>
- *
- * <p>{@code CassandraIO} provides a sink to write a collection of entities to Apache Cassandra.
- *
- * <p>The following example illustrates various options for configuring the IO write:
- *
- * <pre>{@code
- * pipeline
- *    .apply(...) // provides a PCollection<Person> where Person is an entity
- *    .apply(CassandraIO.<Person>write()
- *        .withHosts(Arrays.asList("host1", "host2"))
- *        .withPort(9042)
- *        .withKeyspace("beam")
- *        .withEntity(Person.class));
- * }</pre>
- *
- * <h3>Cassandra Socket Options</h3>
- *
- * <p>The following example illustrates setting timeouts for the Cassandra client:
- *
- * <pre>{@code
- * pipeline.apply(CassandraIO.<Person>read()
- *     .withHosts(Arrays.asList("host1", "host2"))
- *     .withPort(9042)
- *     .withConnectTimeout(1000)
- *     .withReadTimeout(5000)
- *     .withKeyspace("beam")
- *     .withTable("Person")
- *     .withEntity(Person.class)
- *     .withCoder(SerializableCoder.of(Person.class))
- * }</pre>
+ * An IO to read and write from/to Astra.
  */
 @Experimental(Kind.SOURCE_SINK)
-public class AstraIO {
+public class AstraCqlIO {
 
-  private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
+  /**
+   * Work with CQL and Astra.
+   */
+  private static final Logger LOG = LoggerFactory.getLogger(AstraCqlIO.class);
 
-  private AstraIO() {}
+  /**
+   * Hidding default constructor.
+   */
+  private AstraCqlIO() {}
 
   /** Provide a {@link Read} {@link PTransform} to read data from a Cassandra database. */
   public static <T> Read<T> read() {
-    return new AutoValue_AstraIO_Read.Builder<T>().build();
+    return new AutoValue_AstraCqlIO_Read.Builder<T>().build();
   }
 
   /** Provide a {@link ReadAll} {@link PTransform} to read data from a Cassandra database. */
   public static <T> ReadAll<T> readAll() {
-    return new AutoValue_AstraIO_ReadAll.Builder<T>().build();
+    return new AutoValue_AstraCqlIO_ReadAll.Builder<T>().build();
   }
 
   /** Provide a {@link Write} {@link PTransform} to write data to a Cassandra database. */
@@ -136,7 +89,7 @@ public class AstraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraCqlIO} for more
    * information on usage and configuration.
    */
   @AutoValue
@@ -164,7 +117,11 @@ public class AstraIO {
 
     abstract @Nullable ValueProvider<Integer> readTimeout();
 
-    abstract @Nullable ValueProvider<String> cloudSecureConnectBundle();
+    abstract @Nullable ValueProvider<File> secureConnectBundleFile();
+
+    abstract @Nullable ValueProvider<URL> secureConnectBundleUrl();
+
+    abstract @Nullable ValueProvider<InputStream> secureConnectBundleStream();
 
     abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
 
@@ -207,7 +164,7 @@ public class AstraIO {
     }
 
     /**
-     * Specify the entity class (annotated POJO). The {@link AstraIO} will read the data and
+     * Specify the entity class (annotated POJO). The {@link AstraCqlIO} will read the data and
      * convert the data as entity instances. The {@link PCollection} resulting from the read will
      * contains entity elements.
      */
@@ -319,42 +276,80 @@ public class AstraIO {
       return builder().setRingRanges(ringRange).build();
     }
 
-    /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withCloudSecureConnectBundle(String cloudSecureConnectBundlePath) {
-      checkArgument(cloudSecureConnectBundlePath != null, "keyspace can not be null");
-      return withCloudSecureConnectBundle(ValueProvider.StaticValueProvider.of(cloudSecureConnectBundlePath));
+    // -------------------------------------------------
+    // 3 ways to populate cloud secure bundle for READ
+    // -------------------------------------------------
+
+    /**
+     * Populate SCB as a file.
+     *
+     * @param scbFile
+     *    secure connect bundle file
+     * @return
+     *    reference to READ
+     */
+    public Read<T> withSecureConnectBundleFile(File scbFile) {
+      checkArgument(scbFile != null, "keyspace can not be null");
+      return withSecureConnectBundleFile(ValueProvider.StaticValueProvider.of(scbFile));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withCloudSecureConnectBundle(ValueProvider<String> cloudSecureConnectBundlePath) {
-      checkArgument(cloudSecureConnectBundlePath != null, "keyspace can not be null");
-      File cloudSecureConnectBundleFile = new File(cloudSecureConnectBundlePath.get());
-      checkArgument(cloudSecureConnectBundleFile.exists() && cloudSecureConnectBundleFile.canRead(), "Cloud secure bundle can be a file ");
-      return builder().setCloudSecureConnectBundle(cloudSecureConnectBundlePath).build();
+    public Read<T> withSecureConnectBundleFile(ValueProvider<File> cloudSecureConnectBundleFile) {
+      checkArgument(cloudSecureConnectBundleFile != null, "keyspace can not be null");
+      return builder().setSecureConnectBundleFile(cloudSecureConnectBundleFile).build();
     }
 
+    /** Specify the Cassandra keyspace where to read data. */
+    public Read<T> withSecureConnectBundleURL(URL scbURL) {
+      checkArgument(scbURL != null, "SCB url cannot be null");
+      return withSecureConnectBundleURL(ValueProvider.StaticValueProvider.of(scbURL));
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Read<T> withSecureConnectBundleURL(ValueProvider<URL> scbURL) {
+      checkArgument(scbURL != null, "SCB url cannot be null");
+      return builder().setSecureConnectBundleUrl(scbURL).build();
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Read<T> withSecureConnectBundleStream(InputStream scbStream) {
+      checkArgument(scbStream != null, "scbStream cannot be null");
+      return withSecureConnectBundleStream(ValueProvider.StaticValueProvider.of(scbStream));
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Read<T> withSecureConnectBundleStream(ValueProvider<InputStream> scbStream) {
+      checkArgument(scbStream != null, "scbStream cannot be null");
+      return builder().setSecureConnectBundleStream(scbStream).build();
+    }
+
+    /**
+     *
+     * @param input
+     * @return
+     */
     @Override
     public PCollection<T> expand(PBegin input) {
       checkArgument(token() != null, "withToken() is required");
-      checkArgument(cloudSecureConnectBundle() != null, "withCloudSecureConnectBundle() is required");
       checkArgument(keyspace() != null, "withKeyspace() is required");
       checkArgument(table() != null, "withTable() is required");
       checkArgument(entity() != null, "withEntity() is required");
       checkArgument(coder() != null, "withCoder() is required");
-
+      checkArgument(secureConnectBundleFile() != null ||
+              secureConnectBundleStream() != null ||
+              secureConnectBundleUrl()!= null, "secure connect bundle is required");
       PCollection<Read<T>> splits =
           input
               .apply(Create.of(this))
               .apply("Create Splits", ParDo.of(new SplitFn<T>()))
               .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}));
-
-      return splits.apply("ReadAll", AstraIO.<T>readAll().withCoder(coder()));
+      return splits.apply("ReadAll", AstraCqlIO.<T>readAll().withCoder(coder()));
     }
 
     private static class SplitFn<T> extends DoFn<Read<T>, Read<T>> {
       @ProcessElement
       public void process(
-              @Element AstraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
+              @Element AstraCqlIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
         Set<RingRange> ringRanges = getRingRanges(read);
         for (RingRange rr : ringRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
@@ -368,7 +363,9 @@ public class AstraIO {
                 read.consistencyLevel(),
                 read.connectTimeout(),
                 read.readTimeout(),
-                read.cloudSecureConnectBundle())) {
+                read.secureConnectBundleFile(),
+                read.secureConnectBundleUrl(),
+                read.secureConnectBundleStream())) {
 
             Integer splitCount;
             if (read.minNumberOfSplits() != null && read.minNumberOfSplits().get() != null) {
@@ -421,7 +418,11 @@ public class AstraIO {
 
       abstract Builder<T> setRingRanges(ValueProvider<Set<RingRange>> ringRange);
 
-      abstract Builder<T> setCloudSecureConnectBundle(ValueProvider<String> cloudSecureConnectBundlePath);
+      abstract Builder<T> setSecureConnectBundleFile(ValueProvider<File> scbFile);
+
+      abstract Builder<T> setSecureConnectBundleUrl(ValueProvider<URL> scbURL);
+
+      abstract Builder<T> setSecureConnectBundleStream(ValueProvider<InputStream> scbStream);
 
       abstract Read<T> autoBuild();
 
@@ -441,7 +442,7 @@ public class AstraIO {
   }
 
   /**
-   * A {@link PTransform} to mutate into Apache Cassandra. See {@link AstraIO} for details on
+   * A {@link PTransform} to mutate into Apache Cassandra. See {@link AstraCqlIO} for details on
    * usage and configuration.
    */
   @AutoValue
@@ -450,7 +451,12 @@ public class AstraIO {
   public abstract static class Write<T> extends PTransform<PCollection<T>, PDone> {
 
     abstract @Nullable ValueProvider<String> token();
-    abstract @Nullable ValueProvider<String> cloudSecureConnectBundle();
+
+    abstract @Nullable ValueProvider<File> secureConnectBundleFile();
+
+    abstract @Nullable ValueProvider<URL> secureConnectBundleUrl();
+
+    abstract @Nullable ValueProvider<InputStream> secureConnectBundleStream();
 
     abstract @Nullable ValueProvider<String> keyspace();
 
@@ -467,7 +473,7 @@ public class AstraIO {
     abstract Builder<T> builder();
 
     static <T> Builder<T> builder(MutationType mutationType) {
-      return new AutoValue_AstraIO_Write.Builder<T>().setMutationType(mutationType);
+      return new AutoValue_AstraCqlIO_Write.Builder<T>().setMutationType(mutationType);
     }
 
     /** Specify the Cassandra keyspace where to write data. */
@@ -503,7 +509,7 @@ public class AstraIO {
     }
 
     /**
-     * Specify the entity class in the input {@link PCollection}. The {@link AstraIO} will map
+     * Specify the entity class in the input {@link PCollection}. The {@link AstraCqlIO} will map
      * this entity to the Cassandra table thanks to the annotations.
      */
     public Write<T> withEntity(Class<T> entity) {
@@ -550,18 +556,51 @@ public class AstraIO {
       return builder().setReadTimeout(timeout).build();
     }
 
-    /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withCloudSecureConnectBundle(String cloudSecureConnectBundlePath) {
-      checkArgument(cloudSecureConnectBundlePath != null, "keyspace can not be null");
-      return withCloudSecureConnectBundle(ValueProvider.StaticValueProvider.of(cloudSecureConnectBundlePath));
+    // -------------------------------------------------
+    // 3 ways to populate cloud secure bundle for WRITE
+    // -------------------------------------------------
+
+    /**
+     * Populate SCB as a file.
+     *
+     * @param scbFile
+     *    secure connect bundle file
+     * @return
+     *    reference to READ
+     */
+    public Write<T> withSecureConnectBundleFile(File scbFile) {
+      checkArgument(scbFile != null, "keyspace can not be null");
+      return withSecureConnectBundleFile(ValueProvider.StaticValueProvider.of(scbFile));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withCloudSecureConnectBundle(ValueProvider<String> cloudSecureConnectBundlePath) {
-      checkArgument(cloudSecureConnectBundlePath != null, "keyspace can not be null");
-      File cloudSecureConnectBundleFile = new File(cloudSecureConnectBundlePath.get());
-      checkArgument(cloudSecureConnectBundleFile.exists() && cloudSecureConnectBundleFile.canRead(), "Cloud secure bundle can be a file ");
-      return builder().setCloudSecureConnectBundle(cloudSecureConnectBundlePath).build();
+    public Write<T> withSecureConnectBundleFile(ValueProvider<File> cloudSecureConnectBundleFile) {
+      checkArgument(cloudSecureConnectBundleFile != null, "keyspace can not be null");
+      return builder().setSecureConnectBundleFile(cloudSecureConnectBundleFile).build();
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Write<T> withSecureConnectBundleURL(URL scbURL) {
+      checkArgument(scbURL != null, "SCB url cannot be null");
+      return withSecureConnectBundleURL(ValueProvider.StaticValueProvider.of(scbURL));
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Write<T> withSecureConnectBundleURL(ValueProvider<URL> scbURL) {
+      checkArgument(scbURL != null, "SCB url cannot be null");
+      return builder().setSecureConnectBundleUrl(scbURL).build();
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Write<T> withSecureConnectBundleStream(InputStream scbStream) {
+      checkArgument(scbStream != null, "scbStream cannot be null");
+      return withSecureConnectBundleStream(ValueProvider.StaticValueProvider.of(scbStream));
+    }
+
+    /** Specify the Cassandra keyspace where to read data. */
+    public Write<T> withSecureConnectBundleStream(ValueProvider<InputStream> scbStream) {
+      checkArgument(scbStream != null, "scbStream cannot be null");
+      return builder().setSecureConnectBundleStream(scbStream).build();
     }
 
     public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
@@ -635,7 +674,9 @@ public class AstraIO {
       /**
        * Setter for AutoValue to generate and populate the cloudSecureConnectBundlePath.
        */
-      abstract Builder<T> setCloudSecureConnectBundle(ValueProvider<String> cloudSecureConnectBundlePath);
+      abstract Builder<T> setSecureConnectBundleFile(ValueProvider<File> scbFile);
+      abstract Builder<T> setSecureConnectBundleUrl(ValueProvider<URL> scbURL);
+      abstract Builder<T> setSecureConnectBundleStream(ValueProvider<InputStream> scbStream);
 
       abstract Optional<SerializableFunction<Session, Mapper>> mapperFactoryFn();
 
@@ -722,20 +763,35 @@ public class AstraIO {
    *    connection timeout
    * @param readTimeout
    *    read timeout
-   * @param cloudSecureConnectBundlePath
-   *    path to cloud secureConnect bundle zip archive
+   * @param scbFile
+   *    read scb as a file
+   * @param scbUrl
+   *    read scb as an url
+   * @param scbStream
+   *    read scb as stream
    * @return
    *    cassandra cluster
    */
   static Cluster getCluster(
-      ValueProvider<String> token,
-      ValueProvider<String> consistencyLevel,
-      ValueProvider<Integer> connectTimeout,
-      ValueProvider<Integer> readTimeout,
-      ValueProvider<String> cloudSecureConnectBundlePath) {
+          ValueProvider<String> token,
+          ValueProvider<String> consistencyLevel,
+          ValueProvider<Integer> connectTimeout,
+          ValueProvider<Integer> readTimeout,
+          ValueProvider<File> scbFile,
+          ValueProvider<URL> scbUrl,
+          ValueProvider<InputStream> scbStream) {
 
     Cluster.Builder builder = Cluster.builder();
-    builder.withCloudSecureConnectBundle(new File(cloudSecureConnectBundlePath.get()));
+
+    if (scbFile != null) {
+      builder.withCloudSecureConnectBundle(scbFile.get());
+    } else if (scbUrl != null) {
+      builder.withCloudSecureConnectBundle(scbUrl.get());
+    } else if (scbStream != null) {
+      builder.withCloudSecureConnectBundle(scbStream.get());
+    } else {
+      throw new IllegalArgumentException("Cloud Secure Bundle is Required");
+    }
     builder.withAuthProvider(new PlainTextAuthProvider("token", token.get()));
     if (consistencyLevel != null) {
       builder.withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.valueOf(consistencyLevel.get())));
@@ -778,8 +834,9 @@ public class AstraIO {
                         ValueProvider.StaticValueProvider.of(ConsistencyLevel.LOCAL_QUORUM.name()),
                         spec.connectTimeout(),
                         spec.readTimeout(),
-                        spec.cloudSecureConnectBundle());
-
+                        spec.secureConnectBundleFile(),
+                        spec.secureConnectBundleUrl(),
+                        spec.secureConnectBundleStream());
       this.session = cluster.connect(spec.keyspace().get());
       this.mapperFactoryFn = spec.mapperFactoryFn();
       this.mutateFutures = new ArrayList<>();
@@ -834,7 +891,7 @@ public class AstraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraCqlIO} for more
    * information on usage and configuration.
    */
   @AutoValue

@@ -55,7 +55,7 @@ public class AstraIOIT {
     public void testWriteThenRead() {
         // Write Data in Astra
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-                .apply(AstraIO.<SimpleDataEntity>write()
+                .apply(AstraCqlIO.<SimpleDataEntity>write()
                         .withToken(astraOptions.getToken())
                         .withCloudSecureConnectBundle(astraOptions.getSecureConnectBundle())
                         .withKeyspace(astraOptions.getKeyspace())

@@ -20,11 +20,16 @@ package com.datastax.astra.beam.demo;
 import com.datastax.astra.beam.demo.domain.AstraIOTestUtils;
 import com.datastax.astra.beam.demo.domain.SimpleDataEntity;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.astra.AstraIO;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.astra.AstraCqlIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.Create;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.URL;
+import java.nio.channels.Channels;
 
 /**
  * A starter example for writing Beam programs.
@@ -55,25 +60,39 @@ public class AstraSampleWrite {
    * @param args
    */
   public static void main(String[] args) {
+    LOG.info("Starting Pipeline");
     AstraOptions astraOptions = PipelineOptionsFactory
-            .fromArgs(args).withValidation()
+            .fromArgs(args)
+            .withValidation()
             .as(AstraOptions.class);
 
     Pipeline pipelineWrite = Pipeline.create(astraOptions);
+    FileSystems.setDefaultPipelineOptions(astraOptions);
+
+    AstraCqlIO.Write<SimpleDataEntity> writeToAstra = AstraCqlIO.<SimpleDataEntity>write()
+            .withToken(astraOptions.getToken())
+            .withKeyspace(astraOptions.getKeyspace())
+            .withEntity(SimpleDataEntity.class);
+
+    try {
+      if (astraOptions.getSecureConnectBundle().startsWith("gs")) {
+         writeToAstra.withSecureConnectBundleStream(Channels
+                .newInputStream(FileSystems.open(
+                        FileSystems.matchNewResource(astraOptions.getSecureConnectBundle(), false))));
+      } else if (astraOptions.getSecureConnectBundle().startsWith("http")) {
+        writeToAstra.withSecureConnectBundleURL(new URL(astraOptions.getSecureConnectBundle()));
+      } else {
+        writeToAstra.withSecureConnectBundleFile(new File(astraOptions.getSecureConnectBundle()));
+      }
+    } catch(Exception e) {
+      throw new IllegalStateException("Cannot load secure connect bundle", e);
+    }
 
     pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-            .apply(AstraIO.<SimpleDataEntity>write()
-                    .withToken(astraOptions.getToken())
-                    .withCloudSecureConnectBundle(astraOptions.getSecureConnectBundle())
-                    .withKeyspace(astraOptions.getKeyspace())
-                    .withEntity(SimpleDataEntity.class));
-
+                 .apply(writeToAstra);
     pipelineWrite.run().waitUntilFinish();
+
     /*
-
-
-
-
     p.apply(Create.of("Hello", "World"))
      .apply(MapElements.via(new SimpleFunction<String, String>() {
       @Override

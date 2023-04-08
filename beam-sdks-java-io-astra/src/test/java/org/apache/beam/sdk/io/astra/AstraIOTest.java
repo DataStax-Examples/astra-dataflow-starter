@@ -9,21 +9,18 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
 
 /**
  * Testing for AstraIO using CQL.
@@ -38,7 +35,7 @@ public class AstraIOTest implements Serializable {
     // <--
 
     /** Logger for the Class. */
-    private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AstraCqlIO.class);
 
     /**
      * Pipeline reference
@@ -59,8 +56,8 @@ public class AstraIOTest implements Serializable {
     private static Session session;
 
     @BeforeClass
-    public static void beforeClass() throws Exception {
-        cluster = AstraIOTestUtils.createCluster(ASTRA_ZIP_FILE, TOKEN);
+    public static void beforeClass() {
+        cluster = AstraIOTestUtils.createCluster(new File(ASTRA_ZIP_FILE), TOKEN);
         session = cluster.connect(ASTRA_KEYSPACE);
         AstraIOTestUtils.createTable(session);
         AstraIOTestUtils.truncateTable(session);
@@ -70,9 +67,9 @@ public class AstraIOTest implements Serializable {
     public void shouldWriteIntoAstra() {
         LOG.info("WRITE DATA INTO ASTRA");
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-                .apply(AstraIO.<SimpleDataEntity>write()
+                .apply(AstraCqlIO.<SimpleDataEntity>write()
                         .withToken(TOKEN)
-                        .withCloudSecureConnectBundle(ASTRA_ZIP_FILE)
+                        .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
                         .withKeyspace(ASTRA_KEYSPACE)
                         .withEntity(SimpleDataEntity.class));
         pipelineWrite.run().waitUntilFinish();
@@ -89,9 +86,9 @@ public class AstraIOTest implements Serializable {
         pipelineRead = TestPipeline.create();
         LOG.info("+ Pipeline created");
         PCollection<SimpleDataEntity> simpleDataPCollection =
-                pipelineRead.apply(AstraIO.<SimpleDataEntity>read()
+                pipelineRead.apply(AstraCqlIO.<SimpleDataEntity>read()
                                 .withToken(TOKEN)
-                                .withCloudSecureConnectBundle(ASTRA_ZIP_FILE)
+                                .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
                                 .withKeyspace(ASTRA_KEYSPACE)
                                 .withTable("simpledata")
                                 .withMinNumberOfSplits(50)
@@ -112,7 +109,7 @@ public class AstraIOTest implements Serializable {
     }
 
     @AfterClass
-    public static void afterClass() throws Exception {
+    public static void afterClass() {
         if (session!= null) session.close();
         if (cluster!= null) cluster.close();
     }
