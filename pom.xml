@@ -10,8 +10,8 @@
   <packaging>pom</packaging>
 
   <modules>
-    <module>beam-sdks-astra-demo</module>
     <module>beam-sdks-java-io-astra</module>
+    <module>samples-astra-beam-pipelines</module>
   </modules>
 
   <properties>

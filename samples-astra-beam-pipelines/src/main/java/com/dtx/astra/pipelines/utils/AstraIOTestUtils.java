@@ -1,7 +1,8 @@
-package com.datastax.astra.beam.demo.domain;
+package com.dtx.astra.pipelines.utils;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
+import com.dtx.astra.pipelines.domain.SimpleDataEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

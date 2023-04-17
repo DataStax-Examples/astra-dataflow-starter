@@ -56,26 +56,26 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
  * An IO to read and write from/to Astra.
  */
 @Experimental(Kind.SOURCE_SINK)
-public class AstraCqlIO {
+public class AstraIO {
 
   /**
    * Work with CQL and Astra.
    */
-  private static final Logger LOG = LoggerFactory.getLogger(AstraCqlIO.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
 
   /**
    * Hidding default constructor.
    */
-  private AstraCqlIO() {}
+  private AstraIO() {}
 
   /** Provide a {@link Read} {@link PTransform} to read data from a Cassandra database. */
   public static <T> Read<T> read() {
-    return new AutoValue_AstraCqlIO_Read.Builder<T>().build();
+    return new AutoValue_AstraIO_Read.Builder<T>().build();
   }
 
   /** Provide a {@link ReadAll} {@link PTransform} to read data from a Cassandra database. */
   public static <T> ReadAll<T> readAll() {
-    return new AutoValue_AstraCqlIO_ReadAll.Builder<T>().build();
+    return new AutoValue_AstraIO_ReadAll.Builder<T>().build();
   }
 
   /** Provide a {@link Write} {@link PTransform} to write data to a Cassandra database. */
@@ -89,7 +89,7 @@ public class AstraCqlIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraCqlIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
    * information on usage and configuration.
    */
   @AutoValue
@@ -164,7 +164,7 @@ public class AstraCqlIO {
     }
 
     /**
-     * Specify the entity class (annotated POJO). The {@link AstraCqlIO} will read the data and
+     * Specify the entity class (annotated POJO). The {@link AstraIO} will read the data and
      * convert the data as entity instances. The {@link PCollection} resulting from the read will
      * contains entity elements.
      */
@@ -343,13 +343,13 @@ public class AstraCqlIO {
               .apply(Create.of(this))
               .apply("Create Splits", ParDo.of(new SplitFn<T>()))
               .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}));
-      return splits.apply("ReadAll", AstraCqlIO.<T>readAll().withCoder(coder()));
+      return splits.apply("ReadAll", org.apache.beam.sdk.io.astra.AstraIO.<T>readAll().withCoder(coder()));
     }
 
     private static class SplitFn<T> extends DoFn<Read<T>, Read<T>> {
       @ProcessElement
       public void process(
-              @Element AstraCqlIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
+              @Element AstraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
         Set<RingRange> ringRanges = getRingRanges(read);
         for (RingRange rr : ringRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
@@ -442,7 +442,7 @@ public class AstraCqlIO {
   }
 
   /**
-   * A {@link PTransform} to mutate into Apache Cassandra. See {@link AstraCqlIO} for details on
+   * A {@link PTransform} to mutate into Apache Cassandra. See {@link AstraIO} for details on
    * usage and configuration.
    */
   @AutoValue
@@ -473,7 +473,7 @@ public class AstraCqlIO {
     abstract Builder<T> builder();
 
     static <T> Builder<T> builder(MutationType mutationType) {
-      return new AutoValue_AstraCqlIO_Write.Builder<T>().setMutationType(mutationType);
+      return new AutoValue_AstraIO_Write.Builder<T>().setMutationType(mutationType);
     }
 
     /** Specify the Cassandra keyspace where to write data. */
@@ -509,7 +509,7 @@ public class AstraCqlIO {
     }
 
     /**
-     * Specify the entity class in the input {@link PCollection}. The {@link AstraCqlIO} will map
+     * Specify the entity class in the input {@link PCollection}. The {@link AstraIO} will map
      * this entity to the Cassandra table thanks to the annotations.
      */
     public Write<T> withEntity(Class<T> entity) {
@@ -891,7 +891,7 @@ public class AstraCqlIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraCqlIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link AstraIO} for more
    * information on usage and configuration.
    */
   @AutoValue

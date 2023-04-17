@@ -4,8 +4,9 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.datastax.astra</groupId>
-  <artifactId>beam-sdks-astra-demo</artifactId>
-  <name>+ beam-sdks-astra-demo</name>
+  <artifactId>samples-astra-beam-pipelines</artifactId>
+  <name>+ samples-astra-beam-pipelines</name>
+  <description>Sample Pipelines for Astra with Beam</description>
 
   <parent>
     <groupId>com.datastax.astra</groupId>

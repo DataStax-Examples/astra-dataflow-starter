@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Splits given Cassandra table's token range into splits. */
-final class SplitGenerator {
+public final class SplitGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(SplitGenerator.class);
 
   private final String partitioner;
@@ -32,7 +32,7 @@ final class SplitGenerator {
   private final BigInteger rangeMax;
   private final BigInteger rangeSize;
 
-  SplitGenerator(String partitioner) {
+  public SplitGenerator(String partitioner) {
     rangeMin = getRangeMin(partitioner);
     rangeMax = getRangeMax(partitioner);
     rangeSize = getRangeSize(partitioner);
@@ -76,7 +76,7 @@ final class SplitGenerator {
    * @param ringTokens list of all start tokens in big0 cluster. They have to be in ring order.
    * @return big0 list containing at least {@code totalSplitCount} splits.
    */
-  List<List<RingRange>> generateSplits(long totalSplitCount, List<BigInteger> ringTokens) {
+  public List<List<RingRange>> generateSplits(long totalSplitCount, List<BigInteger> ringTokens) {
     int tokenRangeCount = ringTokens.size();
 
     List<RingRange> splits = new ArrayList<>();

@@ -15,47 +15,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.astra;
+package org.apache.beam.sdk.io.astra.cql;
 
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.Token;
-import java.math.BigInteger;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.datastax.driver.core.*;
 import org.apache.beam.sdk.io.astra.AstraIO.Read;
+import org.apache.beam.sdk.io.astra.ConnectionManager;
+import org.apache.beam.sdk.io.astra.Mapper;
+import org.apache.beam.sdk.io.astra.RingRange;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings({
-  "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
-  "nullness" // TODO(https://github.com/apache/beam/issues/20497)
-})
-class ReadFn<T> extends DoFn<Read<T>, T> {
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-  private static final Logger LOG = LoggerFactory.getLogger(ReadFn.class);
+/**
+ * Read function from Astra using Cql interface.
+ *
+ * @param <T>
+ *     current bean
+ */
+class CqlReadFn<T> extends DoFn<AstraCqlRead<T>, T> {
 
+  /** Logger for the class. */
+  private static final Logger LOG = LoggerFactory.getLogger(CqlReadFn.class);
+
+  /** {@inheritDoc}. */
   @ProcessElement
-  public void processElement(@Element Read<T> read, OutputReceiver<T> receiver) {
+  public void processElement(@Element AstraCqlRead<T> read, OutputReceiver<T> receiver) {
     try {
-      Session session = ConnectionManager.getSession(read);
-      Mapper<T> mapper = read.mapperFactoryFn().apply(session);
-      String partitionKey =
-          session.getCluster().getMetadata().getKeyspace(read.keyspace().get())
-              .getTable(read.table().get()).getPartitionKey().stream()
+      // Load existing or opening Session
+      Session session = CqlConnectionManager.getSession(read);
+      Mapper<T> mapper = read.getMapperFactoryFn().apply(session);
+      String partitionKey = session.getCluster().getMetadata().getKeyspace(read.getKeyspace().get())
+              .getTable(read.getTable().get()).getPartitionKey().stream()
               .map(ColumnMetadata::getName)
               .collect(Collectors.joining(","));
 
-      String query = generateRangeQuery(read, partitionKey, read.ringRanges() != null);
+      String query = generateRangeQuery(read, partitionKey, read.getRingRanges() != null);
       PreparedStatement preparedStatement = session.prepare(query);
-      Set<RingRange> ringRanges =
-          read.ringRanges() == null ? Collections.emptySet() : read.ringRanges().get();
+      Set<RingRange> ringRanges = read.getRingRanges() == null ? Collections.emptySet() : read.getRingRanges().get();
 
       for (RingRange rr : ringRanges) {
         Token startToken = session.getCluster().getMetadata().newToken(rr.getStart().toString());
@@ -83,7 +86,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
         }
       }
 
-      if (read.ringRanges() == null) {
+      if (read.getRingRanges() == null) {
         ResultSet rs = session.execute(preparedStatement.bind());
         outputResults(rs, receiver, mapper);
       }
@@ -102,30 +105,28 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
   }
 
   private static String getHighestSplitQuery(
-      Read<?> spec, String partitionKey, BigInteger highest) {
+          AstraCqlRead<?> spec, String partitionKey, BigInteger highest) {
     String highestClause = String.format("(token(%s) >= %d)", partitionKey, highest);
     String finalHighQuery =
-        (spec.query() == null)
+        (spec.getQuery() == null)
             ? buildInitialQuery(spec, true) + highestClause
-            : spec.query() + " AND " + highestClause;
+            : spec.getQuery() + " AND " + highestClause;
     LOG.debug("CassandraIO generated a wrapAround query : {}", finalHighQuery);
     return finalHighQuery;
   }
 
-  private static String getLowestSplitQuery(Read<?> spec, String partitionKey, BigInteger lowest) {
+  private static String getLowestSplitQuery(AstraCqlRead<?> spec, String partitionKey, BigInteger lowest) {
     String lowestClause = String.format("(token(%s) < %d)", partitionKey, lowest);
     String finalLowQuery =
-        (spec.query() == null)
+        (spec.getQuery() == null)
             ? buildInitialQuery(spec, true) + lowestClause
-            : spec.query() + " AND " + lowestClause;
+            : spec.getQuery() + " AND " + lowestClause;
     LOG.debug("CassandraIO generated a wrapAround query : {}", finalLowQuery);
     return finalLowQuery;
   }
 
-  private static String generateRangeQuery(
-      Read<?> spec, String partitionKey, Boolean hasRingRange) {
-    final String rangeFilter =
-        hasRingRange
+  private static String generateRangeQuery(AstraCqlRead<?> spec, String partitionKey, Boolean hasRingRange) {
+    final String rangeFilter = hasRingRange
             ? Joiner.on(" AND ")
                 .skipNulls()
                 .join(
@@ -137,13 +138,25 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
     return combinedQuery;
   }
 
-  private static String buildInitialQuery(Read<?> spec, Boolean hasRingRange) {
-    return (spec.query() == null)
-        ? String.format("SELECT * FROM %s.%s", spec.keyspace().get(), spec.table().get())
-            + " WHERE "
-        : spec.query().get()
-            + (hasRingRange
-                ? spec.query().get().toUpperCase().contains("WHERE") ? " AND " : " WHERE "
-                : "");
+  /**
+   * Generate CQL query when not provided (READ ALL)
+   *
+   * @param spec
+   *    current read
+   * @param hasRingRange
+   *    ring range is enabled
+   * @return
+   *    first CQL
+   */
+  private static String buildInitialQuery(AstraCqlRead<?> spec, Boolean hasRingRange) {
+    String query = String.format("SELECT * FROM %s.%s", spec.getKeyspace().get(), spec.getTable().get());
+    if (spec.getQuery() != null) {
+      query = spec.getQuery().get();
+    }
+    if (hasRingRange) {
+      query+= query.contains("WHERE") ? " AND " : " WHERE ";
+    }
+    return query;
   }
+
 }

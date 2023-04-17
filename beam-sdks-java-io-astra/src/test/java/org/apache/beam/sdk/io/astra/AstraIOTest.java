@@ -35,7 +35,7 @@ public class AstraIOTest implements Serializable {
     // <--
 
     /** Logger for the Class. */
-    private static final Logger LOG = LoggerFactory.getLogger(AstraCqlIO.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
 
     /**
      * Pipeline reference
@@ -67,7 +67,7 @@ public class AstraIOTest implements Serializable {
     public void shouldWriteIntoAstra() {
         LOG.info("WRITE DATA INTO ASTRA");
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-                .apply(AstraCqlIO.<SimpleDataEntity>write()
+                .apply(AstraIO.<SimpleDataEntity>write()
                         .withToken(TOKEN)
                         .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
                         .withKeyspace(ASTRA_KEYSPACE)
@@ -86,7 +86,7 @@ public class AstraIOTest implements Serializable {
         pipelineRead = TestPipeline.create();
         LOG.info("+ Pipeline created");
         PCollection<SimpleDataEntity> simpleDataPCollection =
-                pipelineRead.apply(AstraCqlIO.<SimpleDataEntity>read()
+                pipelineRead.apply(org.apache.beam.sdk.io.astra.AstraIO.<SimpleDataEntity>read()
                                 .withToken(TOKEN)
                                 .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
                                 .withKeyspace(ASTRA_KEYSPACE)

@@ -12,6 +12,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static org.apache.beam.sdk.io.astra.AstraIOTestUtils.*;
 
 /**
@@ -55,9 +56,9 @@ public class AstraIOIT {
     public void testWriteThenRead() {
         // Write Data in Astra
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-                .apply(AstraCqlIO.<SimpleDataEntity>write()
+                .apply(org.apache.beam.sdk.io.astra.AstraIO.<SimpleDataEntity>write()
                         .withToken(astraOptions.getToken())
-                        .withCloudSecureConnectBundle(astraOptions.getSecureConnectBundle())
+                        .withSecureConnectBundleFile(astraOptions.getSecureConnectBundle())
                         .withKeyspace(astraOptions.getKeyspace())
                         .withEntity(SimpleDataEntity.class));
         pipelineWrite.run().waitUntilFinish();

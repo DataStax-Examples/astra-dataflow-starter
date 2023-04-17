@@ -15,13 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.astra.beam.demo;
+package com.dtx.astra.pipelines;
 
-import com.datastax.astra.beam.demo.domain.AstraIOTestUtils;
-import com.datastax.astra.beam.demo.domain.SimpleDataEntity;
+import com.dtx.astra.pipelines.domain.SimpleDataEntity;
+import com.dtx.astra.pipelines.utils.AstraPipelineOptions;
+import com.dtx.astra.pipelines.utils.AstraIOTestUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.astra.AstraCqlIO;
+import org.apache.beam.sdk.io.astra.AstraIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.slf4j.Logger;
@@ -47,12 +48,12 @@ import java.nio.channels.Channels;
  *   --stagingLocation=<STAGING_LOCATION_IN_CLOUD_STORAGE>
  *   --runner=DataflowRunner
  */
-public class AstraSampleWrite {
+public class LoadStaticDataIntoAstraDataflow {
 
   /**
    * Logger for the class.
    */
-  private static final Logger LOG = LoggerFactory.getLogger(AstraSampleWrite.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LoadStaticDataIntoAstraDataflow.class);
 
   /**
    * Main.
@@ -60,29 +61,31 @@ public class AstraSampleWrite {
    * @param args
    */
   public static void main(String[] args) {
-    LOG.info("Starting Pipeline");
-    AstraOptions astraOptions = PipelineOptionsFactory
+    LOGGER.info("Starting Pipeline");
+    AstraPipelineOptions astraOptions = PipelineOptionsFactory
             .fromArgs(args)
             .withValidation()
-            .as(AstraOptions.class);
-
+            .as(AstraPipelineOptions.class);
     Pipeline pipelineWrite = Pipeline.create(astraOptions);
     FileSystems.setDefaultPipelineOptions(astraOptions);
 
-    AstraCqlIO.Write<SimpleDataEntity> writeToAstra = AstraCqlIO.<SimpleDataEntity>write()
+    AstraIO.Write<SimpleDataEntity> writeToAstra = AstraIO.<SimpleDataEntity>write()
             .withToken(astraOptions.getToken())
             .withKeyspace(astraOptions.getKeyspace())
             .withEntity(SimpleDataEntity.class);
 
     try {
       if (astraOptions.getSecureConnectBundle().startsWith("gs")) {
-         writeToAstra.withSecureConnectBundleStream(Channels
+        writeToAstra= writeToAstra.withSecureConnectBundleStream(Channels
                 .newInputStream(FileSystems.open(
                         FileSystems.matchNewResource(astraOptions.getSecureConnectBundle(), false))));
+        System.out.println("STREAM");
       } else if (astraOptions.getSecureConnectBundle().startsWith("http")) {
-        writeToAstra.withSecureConnectBundleURL(new URL(astraOptions.getSecureConnectBundle()));
+        System.out.println("HTTP");
+        writeToAstra= writeToAstra.withSecureConnectBundleURL(new URL(astraOptions.getSecureConnectBundle()));
       } else {
-        writeToAstra.withSecureConnectBundleFile(new File(astraOptions.getSecureConnectBundle()));
+        System.out.println("DEFAULT");
+        writeToAstra= writeToAstra.withSecureConnectBundleFile(new File(astraOptions.getSecureConnectBundle()));
       }
     } catch(Exception e) {
       throw new IllegalStateException("Cannot load secure connect bundle", e);
