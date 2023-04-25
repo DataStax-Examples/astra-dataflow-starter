@@ -18,14 +18,13 @@
 package org.apache.beam.sdk.io.astra;
 
 import com.datastax.driver.core.*;
-
-import java.io.File;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.beam.sdk.io.astra.AstraIO.Read;
 import org.apache.beam.sdk.options.ValueProvider;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
@@ -67,9 +66,8 @@ public class ConnectionManager {
                     read.consistencyLevel(),
                     read.connectTimeout(),
                     read.readTimeout(),
-                    read.secureConnectBundleFile(),
-                    read.secureConnectBundleUrl(),
-                    read.secureConnectBundleStream()));
+                    read.secureConnectBundle(),
+                    read.secureConnectBundleData()));
     return sessionMap.computeIfAbsent(
         readToSessionHash(read),
         k -> cluster.connect(Objects.requireNonNull(read.keyspace()).get()));
@@ -92,8 +90,6 @@ public class ConnectionManager {
    *    read timeout
    * @param scbFile
    *    read scb as a file
-   * @param scbUrl
-   *    read scb as an url
    * @param scbStream
    *    read scb as stream
    * @return
@@ -105,17 +101,14 @@ public class ConnectionManager {
           ValueProvider<Integer> connectTimeout,
           ValueProvider<Integer> readTimeout,
           ValueProvider<File> scbFile,
-          ValueProvider<URL> scbUrl,
-          ValueProvider<InputStream> scbStream) {
+          ValueProvider<byte[]> scbStream) {
 
     Cluster.Builder builder = Cluster.builder();
 
     if (scbFile != null) {
       builder.withCloudSecureConnectBundle(scbFile.get());
-    } else if (scbUrl != null) {
-      builder.withCloudSecureConnectBundle(scbUrl.get());
     } else if (scbStream != null) {
-      builder.withCloudSecureConnectBundle(scbStream.get());
+      builder.withCloudSecureConnectBundle(new ByteArrayInputStream(scbStream.get()));
     } else {
       throw new IllegalArgumentException("Cloud Secure Bundle is Required");
     }

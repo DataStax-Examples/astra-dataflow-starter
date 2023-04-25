@@ -69,7 +69,7 @@ public class AstraIOTest implements Serializable {
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
                 .apply(AstraIO.<SimpleDataEntity>write()
                         .withToken(TOKEN)
-                        .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
+                        .withSecureConnectBundle(new File(ASTRA_ZIP_FILE))
                         .withKeyspace(ASTRA_KEYSPACE)
                         .withEntity(SimpleDataEntity.class));
         pipelineWrite.run().waitUntilFinish();
@@ -88,7 +88,7 @@ public class AstraIOTest implements Serializable {
         PCollection<SimpleDataEntity> simpleDataPCollection =
                 pipelineRead.apply(org.apache.beam.sdk.io.astra.AstraIO.<SimpleDataEntity>read()
                                 .withToken(TOKEN)
-                                .withSecureConnectBundleFile(new File(ASTRA_ZIP_FILE))
+                                .withSecureConnectBundle(new File(ASTRA_ZIP_FILE))
                                 .withKeyspace(ASTRA_KEYSPACE)
                                 .withTable("simpledata")
                                 .withMinNumberOfSplits(50)

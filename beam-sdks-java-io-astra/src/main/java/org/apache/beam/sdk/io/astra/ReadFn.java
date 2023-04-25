@@ -53,6 +53,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
               .collect(Collectors.joining(","));
 
       String query = generateRangeQuery(read, partitionKey, read.ringRanges() != null);
+      LOG.info("READ QUERY:" + query);
       PreparedStatement preparedStatement = session.prepare(query);
       Set<RingRange> ringRanges =
           read.ringRanges() == null ? Collections.emptySet() : read.ringRanges().get();

@@ -1,4 +1,4 @@
-package com.dtx.astra.pipelines.domain;
+package com.dtx.astra.pipelines;
 
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;

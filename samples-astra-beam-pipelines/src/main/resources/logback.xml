@@ -8,6 +8,9 @@
     <logger name="com.dtx.astra.pipelines" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
+    <logger name="org.apache.beam.sdk.io.astra.cql" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
     <root level="ERROR">
         <appender-ref ref="STDOUT" />
     </root>

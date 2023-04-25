@@ -1,7 +1,6 @@
 package org.apache.beam.sdk.io.astra;
 
 import com.datastax.driver.core.Cluster;
-import org.apache.beam.sdk.io.astra.cql.AstraCqlRead;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 
@@ -10,14 +9,25 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Split read per Token Range.
+ *
+ * @param <T>
+ *     working entity
+ */
 public class SplitFn<T> extends DoFn<AstraIO.Read<T>, AstraIO.Read<T>> {
 
+    /**
+     * For each token ranges, update output receiver.
+     * @param read
+     * @param outputReceiver
+     */
     @ProcessElement
     public void process(@Element AstraIO.Read<T> read, OutputReceiver<AstraIO.Read<T>> outputReceiver) {
-        Set<RingRange> ringRanges = getRingRanges(read);
-        for (RingRange rr : ringRanges) {
-            outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
-        }
+        ((Set<RingRange>) getRingRanges(read)).stream()
+                .map(ImmutableSet::of)
+                .map(read::withRingRanges)
+                .forEach(outputReceiver::output);
     }
 
     private static <T> Set<RingRange> getRingRanges(AstraIO.Read<T> read) {
@@ -26,9 +36,8 @@ public class SplitFn<T> extends DoFn<AstraIO.Read<T>, AstraIO.Read<T>> {
                              read.consistencyLevel(),
                              read.connectTimeout(),
                              read.readTimeout(),
-                             read.secureConnectBundleFile(),
-                             read.secureConnectBundleUrl(),
-                             read.secureConnectBundleStream())) {
+                             read.secureConnectBundle(),
+                             read.secureConnectBundleData())) {
 
             Integer splitCount;
             if (read.minNumberOfSplits() != null && read.minNumberOfSplits().get() != null) {

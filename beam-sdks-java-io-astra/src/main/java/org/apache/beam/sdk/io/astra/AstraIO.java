@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -117,11 +118,9 @@ public class AstraIO {
 
     abstract @Nullable ValueProvider<Integer> readTimeout();
 
-    abstract @Nullable ValueProvider<File> secureConnectBundleFile();
+    abstract @Nullable ValueProvider<File> secureConnectBundle();
 
-    abstract @Nullable ValueProvider<URL> secureConnectBundleUrl();
-
-    abstract @Nullable ValueProvider<InputStream> secureConnectBundleStream();
+    abstract @Nullable ValueProvider<byte[]> secureConnectBundleData();
 
     abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
 
@@ -276,10 +275,6 @@ public class AstraIO {
       return builder().setRingRanges(ringRange).build();
     }
 
-    // -------------------------------------------------
-    // 3 ways to populate cloud secure bundle for READ
-    // -------------------------------------------------
-
     /**
      * Populate SCB as a file.
      *
@@ -288,39 +283,27 @@ public class AstraIO {
      * @return
      *    reference to READ
      */
-    public Read<T> withSecureConnectBundleFile(File scbFile) {
+    public Read<T> withSecureConnectBundle(File scbFile) {
       checkArgument(scbFile != null, "keyspace can not be null");
-      return withSecureConnectBundleFile(ValueProvider.StaticValueProvider.of(scbFile));
+      return withSecureConnectBundle(ValueProvider.StaticValueProvider.of(scbFile));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withSecureConnectBundleFile(ValueProvider<File> cloudSecureConnectBundleFile) {
+    public Read<T> withSecureConnectBundle(ValueProvider<File> cloudSecureConnectBundleFile) {
       checkArgument(cloudSecureConnectBundleFile != null, "keyspace can not be null");
-      return builder().setSecureConnectBundleFile(cloudSecureConnectBundleFile).build();
+      return builder().setSecureConnectBundle(cloudSecureConnectBundleFile).build();
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withSecureConnectBundleURL(URL scbURL) {
-      checkArgument(scbURL != null, "SCB url cannot be null");
-      return withSecureConnectBundleURL(ValueProvider.StaticValueProvider.of(scbURL));
+    public Read<T> withSecureConnectBundleData(byte[] scbBytes) {
+      checkArgument(scbBytes != null, "SCB url cannot be null");
+      return withSecureConnectBundleData(ValueProvider.StaticValueProvider.of(scbBytes));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withSecureConnectBundleURL(ValueProvider<URL> scbURL) {
-      checkArgument(scbURL != null, "SCB url cannot be null");
-      return builder().setSecureConnectBundleUrl(scbURL).build();
-    }
-
-    /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withSecureConnectBundleStream(InputStream scbStream) {
-      checkArgument(scbStream != null, "scbStream cannot be null");
-      return withSecureConnectBundleStream(ValueProvider.StaticValueProvider.of(scbStream));
-    }
-
-    /** Specify the Cassandra keyspace where to read data. */
-    public Read<T> withSecureConnectBundleStream(ValueProvider<InputStream> scbStream) {
-      checkArgument(scbStream != null, "scbStream cannot be null");
-      return builder().setSecureConnectBundleStream(scbStream).build();
+    public Read<T> withSecureConnectBundleData(ValueProvider<byte[]> scbBytes) {
+      checkArgument(scbBytes != null, "SCB url cannot be null");
+      return builder().setSecureConnectBundleData(scbBytes).build();
     }
 
     /**
@@ -332,12 +315,10 @@ public class AstraIO {
     public PCollection<T> expand(PBegin input) {
       checkArgument(token() != null, "withToken() is required");
       checkArgument(keyspace() != null, "withKeyspace() is required");
-      checkArgument(table() != null, "withTable() is required");
+      checkArgument(table() != null || query() != null, "table() or query() is required");
       checkArgument(entity() != null, "withEntity() is required");
       checkArgument(coder() != null, "withCoder() is required");
-      checkArgument(secureConnectBundleFile() != null ||
-              secureConnectBundleStream() != null ||
-              secureConnectBundleUrl()!= null, "secure connect bundle is required");
+      checkArgument(secureConnectBundle() != null || secureConnectBundleData()!= null, "secure connect bundle is required");
       PCollection<Read<T>> splits =
           input
               .apply(Create.of(this))
@@ -363,9 +344,8 @@ public class AstraIO {
                 read.consistencyLevel(),
                 read.connectTimeout(),
                 read.readTimeout(),
-                read.secureConnectBundleFile(),
-                read.secureConnectBundleUrl(),
-                read.secureConnectBundleStream())) {
+                read.secureConnectBundle(),
+                read.secureConnectBundleData())) {
 
             Integer splitCount;
             if (read.minNumberOfSplits() != null && read.minNumberOfSplits().get() != null) {
@@ -418,11 +398,9 @@ public class AstraIO {
 
       abstract Builder<T> setRingRanges(ValueProvider<Set<RingRange>> ringRange);
 
-      abstract Builder<T> setSecureConnectBundleFile(ValueProvider<File> scbFile);
+      abstract Builder<T> setSecureConnectBundle(ValueProvider<File> scbFile);
 
-      abstract Builder<T> setSecureConnectBundleUrl(ValueProvider<URL> scbURL);
-
-      abstract Builder<T> setSecureConnectBundleStream(ValueProvider<InputStream> scbStream);
+      abstract Builder<T> setSecureConnectBundleData(ValueProvider<byte[]> scbStream);
 
       abstract Read<T> autoBuild();
 
@@ -452,11 +430,9 @@ public class AstraIO {
 
     abstract @Nullable ValueProvider<String> token();
 
-    abstract @Nullable ValueProvider<File> secureConnectBundleFile();
+    abstract @Nullable ValueProvider<File> secureConnectBundle();
 
-    abstract @Nullable ValueProvider<URL> secureConnectBundleUrl();
-
-    abstract @Nullable ValueProvider<InputStream> secureConnectBundleStream();
+    abstract @Nullable ValueProvider<byte[]> secureConnectBundleData();
 
     abstract @Nullable ValueProvider<String> keyspace();
 
@@ -568,39 +544,27 @@ public class AstraIO {
      * @return
      *    reference to READ
      */
-    public Write<T> withSecureConnectBundleFile(File scbFile) {
+    public Write<T> withSecureConnectBundle(File scbFile) {
       checkArgument(scbFile != null, "keyspace can not be null");
-      return withSecureConnectBundleFile(ValueProvider.StaticValueProvider.of(scbFile));
+      return withSecureConnectBundle(ValueProvider.StaticValueProvider.of(scbFile));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withSecureConnectBundleFile(ValueProvider<File> cloudSecureConnectBundleFile) {
+    public Write<T> withSecureConnectBundle(ValueProvider<File> cloudSecureConnectBundleFile) {
       checkArgument(cloudSecureConnectBundleFile != null, "keyspace can not be null");
-      return builder().setSecureConnectBundleFile(cloudSecureConnectBundleFile).build();
+      return builder().setSecureConnectBundle(cloudSecureConnectBundleFile).build();
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withSecureConnectBundleURL(URL scbURL) {
-      checkArgument(scbURL != null, "SCB url cannot be null");
-      return withSecureConnectBundleURL(ValueProvider.StaticValueProvider.of(scbURL));
-    }
-
-    /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withSecureConnectBundleURL(ValueProvider<URL> scbURL) {
-      checkArgument(scbURL != null, "SCB url cannot be null");
-      return builder().setSecureConnectBundleUrl(scbURL).build();
-    }
-
-    /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withSecureConnectBundleStream(InputStream scbStream) {
+    public Write<T> withSecureConnectBundleData(byte[] scbStream) {
       checkArgument(scbStream != null, "scbStream cannot be null");
-      return withSecureConnectBundleStream(ValueProvider.StaticValueProvider.of(scbStream));
+      return withSecureConnectBundleData(ValueProvider.StaticValueProvider.of(scbStream));
     }
 
     /** Specify the Cassandra keyspace where to read data. */
-    public Write<T> withSecureConnectBundleStream(ValueProvider<InputStream> scbStream) {
+    public Write<T> withSecureConnectBundleData(ValueProvider<byte[]> scbStream) {
       checkArgument(scbStream != null, "scbStream cannot be null");
-      return builder().setSecureConnectBundleStream(scbStream).build();
+      return builder().setSecureConnectBundleData(scbStream).build();
     }
 
     public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
@@ -674,9 +638,8 @@ public class AstraIO {
       /**
        * Setter for AutoValue to generate and populate the cloudSecureConnectBundlePath.
        */
-      abstract Builder<T> setSecureConnectBundleFile(ValueProvider<File> scbFile);
-      abstract Builder<T> setSecureConnectBundleUrl(ValueProvider<URL> scbURL);
-      abstract Builder<T> setSecureConnectBundleStream(ValueProvider<InputStream> scbStream);
+      abstract Builder<T> setSecureConnectBundle(ValueProvider<File> scbFile);
+      abstract Builder<T> setSecureConnectBundleData(ValueProvider<byte[]> scbStream);
 
       abstract Optional<SerializableFunction<Session, Mapper>> mapperFactoryFn();
 
@@ -765,8 +728,6 @@ public class AstraIO {
    *    read timeout
    * @param scbFile
    *    read scb as a file
-   * @param scbUrl
-   *    read scb as an url
    * @param scbStream
    *    read scb as stream
    * @return
@@ -778,17 +739,14 @@ public class AstraIO {
           ValueProvider<Integer> connectTimeout,
           ValueProvider<Integer> readTimeout,
           ValueProvider<File> scbFile,
-          ValueProvider<URL> scbUrl,
-          ValueProvider<InputStream> scbStream) {
+          ValueProvider<byte[]> scbStream) {
 
     Cluster.Builder builder = Cluster.builder();
 
     if (scbFile != null) {
       builder.withCloudSecureConnectBundle(scbFile.get());
-    } else if (scbUrl != null) {
-      builder.withCloudSecureConnectBundle(scbUrl.get());
     } else if (scbStream != null) {
-      builder.withCloudSecureConnectBundle(scbStream.get());
+      builder.withCloudSecureConnectBundle(new ByteArrayInputStream(scbStream.get()));
     } else {
       throw new IllegalArgumentException("Cloud Secure Bundle is Required");
     }
@@ -827,16 +785,13 @@ public class AstraIO {
     private final String operationName;
 
     Mutator(Write<T> spec, BiFunction<Mapper<T>, T, Future<Void>> mutator, String operationName) {
-      // If a cloudSecureConnectBundle is specified some parameters need to be enforced (for write)
-
       this.cluster = getCluster(
                         spec.token(),
                         ValueProvider.StaticValueProvider.of(ConsistencyLevel.LOCAL_QUORUM.name()),
                         spec.connectTimeout(),
                         spec.readTimeout(),
-                        spec.secureConnectBundleFile(),
-                        spec.secureConnectBundleUrl(),
-                        spec.secureConnectBundleStream());
+                        spec.secureConnectBundle(),
+                        spec.secureConnectBundleData());
       this.session = cluster.connect(spec.keyspace().get());
       this.mapperFactoryFn = spec.mapperFactoryFn();
       this.mutateFutures = new ArrayList<>();

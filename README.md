@@ -2,29 +2,21 @@
 
 This repository proposes some integration of Astra with Apache Beam and GCP Dataflow.
 
-- [ ] Create Archetype
-- [ ] (IO) Read from AstraDB
-- [ ] (IO) Write to Astra DB
+### Prerequisites
 
-## Table of Content
+| Astra                        | GCP                                    | Local Environment          |
+|-------------------------------------------|----------------------------------------|----------------------------|
+| [Create Account](#1-get-an-astra-account) | [Create Project](#1-get-an-astra-account) | [Install Java](#1-get-an-astra-account) |
+ | [Create Token](#2-get-an-astra-token)     | [Setup gCloud CLI](#2-get-an-astra-token) | [Install Maven](#1-get-an-astra-account) |
+| [Setup CLI](#3-setup-astra-cli)           | [Setup Project](#2-get-an-astra-token) | [Clone and Build](#1-get-an-astra-account) |
+| [Setup DB](#4-setup-databases)            |                                        |                            |
 
-**Astra Prerequisites**
-- [1. Get an Astra Account](#1-get-an-astra-account)
-- [2. Get an Astra Token](#2-get-an-astra-token)
-- [3. Setup Astra CLI](#3-setup-astra-cli)
-- [4. Create DB](#4-setup-databases)
+### Sample Pipelines
 
-**GCP Prerequisites**
-- [1. Create Project](#1-get-an-astra-account)
-- [2. Setup gCloud CLI](#2-get-an-astra-token)
-- [3. Setup Project](#2-get-an-astra-token)
-
-**Local Environment Prerequisites**
-- [1. Tools](#1-get-an-astra-account)
-- [2. Project](#2-get-an-astra-token)
-
-**Sample Pipelines**
-- [1. Load Static Data ](#1-get-an-astra-account)
+| Label                                         | Runner         | Description                                                        |
+|-----------------------------------------------|----------------|--------------------------------------------------------------------|
+| [Write Static Data ](#1-get-an-astra-account) | local (direct) | Load 100 record into an Astra Table                                |
+| [Write Static Data ](#1-get-an-astra-account) | GCP (dataflow) | Load 100 record into an Astra Table. SC is in google cloud storage |
 
 
 ## Astra Prerequisites
@@ -178,7 +170,7 @@ ls -l /tmp/secure-connect-bundle-demo.zip
 `✅` - Run Flow
 ```
  mvn compile exec:java -Pdirect-runner \
-  -Dexec.mainClass=com.dtx.astra.pipelines.LoadStaticDataIntoAstra \
+  -Dexec.mainClass=com.dtx.astra.pipelines.beam.BulkDataLoadWithBeam \
   -Dexec.args="\
     --keyspace=demo \
     --secureConnectBundle=/tmp/secure-connect-bundle-demo.zip \
@@ -218,7 +210,7 @@ gsutil acl ch -u AllUsers:R gs://astra_dataflow_inputs/secure-connect-bundle-dem
 `✅` - Run the JOB
 ```
 mvn -Pdataflow-runner compile exec:java \
-    -Dexec.mainClass=com.dtx.astra.pipelines.LoadStaticDataIntoAstra \
+    -Dexec.mainClass=com.dtx.astra.pipelines.beam.BulkDataLoadWithBeam \
     -Dexec.args="\
     --keyspace=demo \
     --secureConnectBundle=https://storage.googleapis.com/astra_dataflow_inputs/secure-connect-bundle-demo.zip \
@@ -237,3 +229,46 @@ astra db cqlsh demo -k demo \
   --request-timeout 20
 ```
 
+### Example 3 - 
+
+```
+astra db cqlsh demo -k demo \
+  -e "truncate simpledata" \
+  --connect-timeout 20 \
+  --request-timeout 20
+```
+
+
+`✅` - Run Flow
+```
+ mvn compile exec:java -Pdirect-runner \
+  -Dexec.mainClass=com.dtx.astra.pipelines.LoadStaticDataIntoAstraCql \
+  -Dexec.args="\
+    --keyspace=demo \
+    --secureConnectBundle=/tmp/secure-connect-bundle-demo.zip \
+    --token=${ASTRA_TOKEN}"
+```
+
+
+- Security
+```
+gcloud secrets add-iam-policy-binding cedrick-demo-scb \
+        --member="serviceAccount:747469159044-compute@developer.gserviceaccount.com" \
+        --role='roles/secretmanager.secretAccessor'
+gcloud secrets add-iam-policy-binding cedrick-demo-scb \
+        --member="serviceAccount:747469159044-compute@developer.gserviceaccount.com" \
+        --role='roles/secretmanager.secretAccessor'
+```
+
+- Run
+```
+mvn -Pdataflow-runner compile exec:java \
+    -Dexec.mainClass=ReadSecretAndConnectDataFlow \
+    -Dexec.args="\
+    --astraToken=projects/747469159044/secrets/astra-token/versions/1 \
+    --secureConnectBundle=projects/747469159044/secrets/cedrick-demo-scb/versions/1 \
+    --runner=DataflowRunner \
+    --project=integrations-379317 \
+    --region=us-central1 \
+    --gcpTempLocation=gs://dataflow-apache-quickstart_integrations-379317/temp/"  
+```

@@ -58,7 +58,7 @@ public class AstraIOIT {
         pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
                 .apply(org.apache.beam.sdk.io.astra.AstraIO.<SimpleDataEntity>write()
                         .withToken(astraOptions.getToken())
-                        .withSecureConnectBundleFile(astraOptions.getSecureConnectBundle())
+                        .withSecureConnectBundle(astraOptions.getSecureConnectBundle())
                         .withKeyspace(astraOptions.getKeyspace())
                         .withEntity(SimpleDataEntity.class));
         pipelineWrite.run().waitUntilFinish();
