@@ -1,0 +1,43 @@
+{
+  "name": "CSV to Astra",
+  "description": "An Apache Beam streaming pipeline that reads CSV files from Google Cloud Storage and writes them into an Astra DB table.",
+  "parameters": [
+    {
+      "name": "inputCsv",
+      "label": "Path of CSV in CloudStorage",
+      "helpText": "CSV file in Google Cloud Storage.",
+      "isOptional": false,
+      "regexes": [
+        "[-_.a-zA-Z0-9/]+"
+      ]
+    },
+    {
+      "name": "astraSecureConnectBundle",
+      "label": "ResourceID for Cloud secure bundle secret",
+      "helpText": "Zip file to secure transport. Provide full resource ID in the form of  projects/${project_id}/secrets/${secret_name}/versions/1 ",
+      "isOptional": false,
+      "regexes": [
+        "[-_.a-zA-Z0-9/]+"
+      ]
+    },
+    {
+      "name": "astraToken",
+      "label": "Resource ID for Astra token Secret",
+      "helpText": "Astra token in a string saved as token. Provide full resource ID in the form of projects/${project_id}/secrets/${secret_name}/versions/1 ",
+      "isOptional": false,
+      "regexes": [
+        "[-_.:a-zA-Z0-9]+"
+      ]
+    },
+    {
+      "name": "astraKeyspace",
+      "label": "AstraDB output keyspace",
+      "helpText": "AstraDB keyspace to write to",
+      "isOptional": false,
+      "regexes": [
+        "[-_.a-zA-Z0-9].+"
+      ]
+    },
+
+  ]
+}
