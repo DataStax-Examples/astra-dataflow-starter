@@ -18,8 +18,6 @@
 package org.apache.beam.sdk.io.astra;
 
 import com.datastax.driver.core.*;
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.google.auto.value.AutoValue;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
@@ -40,9 +38,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.InputStream;
 import java.math.BigInteger;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -767,7 +763,8 @@ public class AstraIO {
     if (readTimeout != null) {
       socketOptions.setReadTimeoutMillis(readTimeout.get());
     }
-
+    Cluster cluster = builder.build();
+    LOG.info("Connected to cluster: {}", cluster.getMetadata().getClusterName());
     return builder.build();
   }
 

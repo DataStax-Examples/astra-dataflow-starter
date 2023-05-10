@@ -7,7 +7,7 @@ import java.io.Serializable;
 /**
  * Sample Bean.
  */
-@Table(name = "language", keyspace = "demo")
+@Table(name = "language")
 public class LanguageCode implements Serializable {
 
     /** Country Code. */

@@ -31,33 +31,32 @@ import java.io.IOException;
 
  mvn -Pdirect-runner compile \
  exec:java \
- -Dexec.mainClass=com.dtx.astra.dataflow.CsvCloudStorageToAstra \
+ -Dexec.mainClass=com.dtx.astra.dataflow.CsvFileToAstra \
  -Dexec.args="\
  --astraToken=AstraCS:uZclXTYecCAqPPjiNmkezapR:e87d6edb702acd87516e4ef78e0c0e515c32ab2c3529f5a3242688034149a0e4 \
  --astraSecureConnectBundle=/Users/cedricklunven/Downloads/scb-demo.zip \
- --astraKeyspace=demo \
+ --astraKeyspace=gcp_integrations \
  --inputCsv=/Users/cedricklunven/Downloads/language-codes.csv"
 
 
- # ---- DATAFLOW 
+ # ---- DATAFLOW
  mvn -Pdataflow-runner compile exec:java \
- -Dexec.mainClass=com.dtx.astra.dataflow.CsvCloudStorageToAstra \
+ -Dexec.mainClass=com.dtx.astra.dataflow.CsvFileToAstra \
  -Dexec.args="\
  --astraToken=projects/747469159044/secrets/astra-token/versions/1 \
  --astraSecureConnectBundle=projects/747469159044/secrets/cedrick-demo-scb/versions/1 \
- --astraKeyspace=demo \
+ --astraKeyspace=gcp_integrations \
  --inputCsv=gs://astra_dataflow_inputs/csv/language-codes.csv \
  --runner=DataflowRunner \
  --project=integrations-379317 \
  --region=us-central1"
-
  */
-public class CsvCloudStorageToAstra {
+public class CsvFileToAstra {
 
     /**
      * Logger.
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(CsvCloudStorageToAstra.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CsvFileToAstra.class);
 
     /**
      * Definition of the interface reflecting
@@ -101,17 +100,21 @@ public class CsvCloudStorageToAstra {
         Pipeline csvToAstra = Pipeline.create(options);
         LOGGER.info("Pipeline created");
         csvToAstra.apply("Read CSV File", TextIO.read().from(options.getInputCsv()))
-                  .apply("Create Destination Table", new CreateTableLanguage<String>(options))
+                  .apply("Create Destination Table", new CreateTableLanguageTransform<String>(options))
                   .apply("Marshalling rows", ParDo.of(new DoFn<String, LanguageCode>() {
                       @ProcessElement
                       public void processElement(ProcessContext c) {
-                          String[] chunks = c.element().split(",");
-                          c.output(new LanguageCode(chunks[0], chunks[1]));
+                          c.output(mapCsvLineToBean(c.element()));
                       }
                    }))
                  .setCoder(SerializableCoder.of(LanguageCode.class))
-                 .apply(buildAstraWrite(options));
+                 .apply(buildAstraIOWrite(options));
         csvToAstra.run().waitUntilFinish();
+    }
+
+    private static LanguageCode mapCsvLineToBean(String line) {
+        String[] chunks = line.split(",");
+        return new LanguageCode(chunks[0], chunks[1]);
     }
 
     private static String readAstraTokenSecret(SecretManagerServiceClient client, LoadDataPipelineOptions options) {
@@ -128,7 +131,7 @@ public class CsvCloudStorageToAstra {
                 .toByteArray();
     }
 
-    private static AstraIO.Write<LanguageCode> buildAstraWrite(LoadDataPipelineOptions options) throws IOException {
+    private static AstraIO.Write<LanguageCode> buildAstraIOWrite(LoadDataPipelineOptions options) throws IOException {
         AstraIO.Write<LanguageCode> write = AstraIO.<LanguageCode>write()
             .withKeyspace(options.getAstraKeyspace())
             .withEntity(LanguageCode.class);
@@ -151,7 +154,7 @@ public class CsvCloudStorageToAstra {
      * @return
      * @throws IOException
      */
-    private static Cluster buildClient(LoadDataPipelineOptions options) throws IOException {
+    private static Cluster buildCassandraSession(LoadDataPipelineOptions options) throws IOException {
         Cluster.Builder builder = Cluster.builder();
         builder.withSocketOptions(new SocketOptions().setConnectTimeoutMillis(20000).setReadTimeoutMillis(20000));
         if (options.getRunner().getName().toLowerCase().startsWith("dataflow")) {
@@ -169,7 +172,7 @@ public class CsvCloudStorageToAstra {
     /**
      * Transform in CSV lines.
      */
-    private static class CreateTableLanguage<T> extends PTransform<PCollection<T>, PCollection<T>> {
+    private static class CreateTableLanguageTransform<T> extends PTransform<PCollection<T>, PCollection<T>> {
 
         /**
          * Astra options.
@@ -177,9 +180,9 @@ public class CsvCloudStorageToAstra {
          * @param astraOptions
          *    options
          */
-        public CreateTableLanguage(LoadDataPipelineOptions astraOptions) throws IOException {
+        public CreateTableLanguageTransform(LoadDataPipelineOptions astraOptions) throws IOException {
             // Create Target Table if needed
-            try(Cluster cluster = CsvCloudStorageToAstra.buildClient(astraOptions)) {
+            try(Cluster cluster = CsvFileToAstra.buildCassandraSession(astraOptions)) {
                 try(Session session = cluster.connect(astraOptions.getAstraKeyspace())) {
                     LOGGER.info("+ Connected to Astra (pre-check)");
                     session.execute(SchemaBuilder.createTable("language")
