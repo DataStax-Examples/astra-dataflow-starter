@@ -5,13 +5,19 @@
        		<pattern>%d{HH:mm:ss.SSS} %magenta(%-5level) %cyan(%-47logger) : %msg%n</pattern>
         </encoder>
     </appender>
+
+    <!-- Log for the Connector AstraIO -->
+    <logger name="org.apache.beam.sdk.io.astra" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    <!-- Log for pipelines -->
     <logger name="com.dtx.astra.pipelines" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
-    <logger name="org.apache.beam.sdk.io.astra.cql" level="INFO" additivity="false">
-        <appender-ref ref="STDOUT" />
-    </logger>
-    <root level="ERROR">
+
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
+
 </configuration>

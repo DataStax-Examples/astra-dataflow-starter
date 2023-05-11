@@ -31,7 +31,7 @@ public class SplitFn<T> extends DoFn<AstraIO.Read<T>, AstraIO.Read<T>> {
     }
 
     private static <T> Set<RingRange> getRingRanges(AstraIO.Read<T> read) {
-        try (Cluster cluster = ConnectionManager.getCluster(
+        try (Cluster cluster = AstraConnectionManager.getInstance().getCluster(
                              read.token(),
                              read.consistencyLevel(),
                              read.connectTimeout(),

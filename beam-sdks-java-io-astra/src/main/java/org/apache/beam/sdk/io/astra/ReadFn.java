@@ -44,7 +44,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
   @ProcessElement
   public void processElement(@Element Read<T> read, OutputReceiver<T> receiver) {
     try {
-      Session session = ConnectionManager.getSession(read);
+      Session session = AstraConnectionManager.getInstance().getSession(read);
       Mapper<T> mapper = read.mapperFactoryFn().apply(session);
       String partitionKey =
           session.getCluster().getMetadata().getKeyspace(read.keyspace().get())

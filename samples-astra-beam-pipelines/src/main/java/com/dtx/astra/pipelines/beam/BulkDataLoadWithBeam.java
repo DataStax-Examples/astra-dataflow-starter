@@ -22,8 +22,8 @@ import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import com.dtx.astra.pipelines.utils.AstraIOTestUtils;
 import com.dtx.astra.pipelines.SimpleDataEntity;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.astra.AstraIO;
+import org.apache.beam.sdk.io.astra.AstraCqlQueryPTransform;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -42,15 +42,13 @@ import java.io.File;
  * You must defined 3 Environment variables:
  *  - ASTRA_KEYSPACE, ASTRA_SCB_PATH and ASTRA_TOKEN
  *
-
-
  mvn -Pdirect-runner compile \
       exec:java \
       -Dexec.mainClass=com.dtx.astra.pipelines.beam.BulkDataLoadWithBeam \
       -Dexec.args="\
         --keyspace=${ASTRA_KEYSPACE} \
         --secureConnectBundle=${ASTRA_SCB_PATH} \
-        --token${ASTRA_TOKEN}"
+        --token=${ASTRA_TOKEN}"
  */
 public class BulkDataLoadWithBeam {
 
@@ -62,7 +60,7 @@ public class BulkDataLoadWithBeam {
   /**
    * Interface definition of parameters needed for this pipeline
    */
-  public interface LoadDataPipelineOptions extends PipelineOptions {
+  public interface BulkDataLoadWithBeamOptions extends PipelineOptions {
 
     @Description("The Zip file to secure the transport (secure connect bundle)")
     @Validation.Required
@@ -86,27 +84,33 @@ public class BulkDataLoadWithBeam {
    * @param args
    */
   public static void main(String[] args) {
-    LOGGER.info("Starting Pipeline");
+    int itemCount = 1000000;
+    LOGGER.info("Load {} Random generated Data intoAstra", itemCount);
 
     // Parse and Validate Parameters
-    LoadDataPipelineOptions astraOptions = PipelineOptionsFactory
-            .fromArgs(args)
-            .withValidation()
-            .as(LoadDataPipelineOptions.class);
+    BulkDataLoadWithBeamOptions astraOptions = PipelineOptionsFactory
+            .fromArgs(args).withValidation().as(BulkDataLoadWithBeamOptions.class);
     Pipeline pipelineWrite = Pipeline.create(astraOptions);
-    FileSystems.setDefaultPipelineOptions(astraOptions);
+    LOGGER.info("+ Parameters have been parsed and validated");
+
+    long top = System.currentTimeMillis();
 
     // Pipeline Definition
-    pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
-                 .apply(new CreateTableTransform<SimpleDataEntity>(astraOptions))
+    pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(itemCount)))
+                 .apply("Create Table", new AstraCqlQueryPTransform<SimpleDataEntity>(
+                         astraOptions.getToken(),
+                         new File(astraOptions.getSecureConnectBundle()),
+                         astraOptions.getKeyspace(),
+                         SimpleDataEntity.cqlCreateTable()))
                  .apply(AstraIO.<SimpleDataEntity>write()
                          .withToken(astraOptions.getToken())
                          .withKeyspace(astraOptions.getKeyspace())
                          .withSecureConnectBundle(new File(astraOptions.getSecureConnectBundle()))
                          .withEntity(SimpleDataEntity.class));
-
+    LOGGER.info("+ Pipeline Initialized after {} ms", System.currentTimeMillis() - top);
     // Pipeline Execution
     pipelineWrite.run().waitUntilFinish();
+    LOGGER.info("+ Done in {} ms", System.currentTimeMillis() - top);
   }
 
   /**
@@ -120,7 +124,7 @@ public class BulkDataLoadWithBeam {
      * @param astraOptions
      *    options
      */
-    public CreateTableTransform(LoadDataPipelineOptions astraOptions) {
+    public CreateTableTransform(BulkDataLoadWithBeamOptions astraOptions) {
       // Create Target Table if needed
       try(Cluster cluster = Cluster.builder()
               .withAuthProvider(new PlainTextAuthProvider("token", astraOptions.getToken()))
@@ -130,7 +134,7 @@ public class BulkDataLoadWithBeam {
         try(Session session = cluster.connect(astraOptions.getKeyspace())) {
           LOGGER.info("+ Connected to Astra (pre-check)");
           session.execute(SchemaBuilder.createTable("simpledata")
-                  .addPartitionKey("id", DataType.smallint())
+                  .addPartitionKey("id", DataType.cint())
                   .addColumn("data", DataType.text())
                   .ifNotExists());
           LOGGER.info("+ Table has been created (if needed)");

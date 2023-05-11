@@ -1,12 +1,14 @@
 package com.dtx.astra.pipelines;
 
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
 
 import java.io.Serializable;
 
-@Table(name = "simpledata", keyspace = "demo")
+@Table(name = "simpledata")
 public class SimpleDataEntity implements Serializable {
 
     @PartitionKey
@@ -26,6 +28,13 @@ public class SimpleDataEntity implements Serializable {
     public SimpleDataEntity(int id, String data) {
         this.id = id;
         this.data = data;
+    }
+
+    public static String cqlCreateTable() {
+        return SchemaBuilder.createTable("simpledata")
+                .addPartitionKey("id", DataType.cint())
+                .addColumn("data", DataType.text())
+                .ifNotExists().toString();
     }
 
     /**

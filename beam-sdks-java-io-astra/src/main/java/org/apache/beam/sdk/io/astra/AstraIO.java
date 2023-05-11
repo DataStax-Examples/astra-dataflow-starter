@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -305,7 +304,7 @@ public class AstraIO {
     }
 
     /**
-     *
+     * Expand for  READ
      * @param input
      * @return
      */
@@ -317,18 +316,23 @@ public class AstraIO {
       checkArgument(entity() != null, "withEntity() is required");
       checkArgument(coder() != null, "withCoder() is required");
       checkArgument(secureConnectBundle() != null || secureConnectBundleData()!= null, "secure connect bundle is required");
-      PCollection<Read<T>> splits =
-          input
+      return input
               .apply(Create.of(this))
               .apply("Create Splits", ParDo.of(new SplitFn<T>()))
-              .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}));
-      return splits.apply("ReadAll", org.apache.beam.sdk.io.astra.AstraIO.<T>readAll().withCoder(coder()));
+              .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}))
+              .apply("ReadAll", org.apache.beam.sdk.io.astra.AstraIO.<T>readAll().withCoder(coder()));
     }
 
+    /**
+     * Split Function to split the read into multiple reads based on the ring ranges.
+     *
+     * @param <T>
+     *        target split
+     */
     private static class SplitFn<T> extends DoFn<Read<T>, Read<T>> {
+
       @ProcessElement
-      public void process(
-              @Element AstraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
+      public void process(@Element AstraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
         Set<RingRange> ringRanges = getRingRanges(read);
         for (RingRange rr : ringRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
@@ -337,7 +341,7 @@ public class AstraIO {
 
       private static <T> Set<RingRange> getRingRanges(Read<T> read) {
         try (Cluster cluster =
-            getCluster(
+            AstraConnectionManager.getInstance().getCluster(
                 read.token(),
                 read.consistencyLevel(),
                 read.connectTimeout(),
@@ -714,62 +718,10 @@ public class AstraIO {
   }
 
   /**
-   * Get a Astra cluster using either hosts and port or cloudSecureBundle.
-   *
-   * @param token
-   *    token (or clientSecret)
-   * @param consistencyLevel
-   *    consistency level
-   * @param connectTimeout
-   *    connection timeout
-   * @param readTimeout
-   *    read timeout
-   * @param scbFile
-   *    read scb as a file
-   * @param scbStream
-   *    read scb as stream
-   * @return
-   *    cassandra cluster
-   */
-  static Cluster getCluster(
-          ValueProvider<String> token,
-          ValueProvider<String> consistencyLevel,
-          ValueProvider<Integer> connectTimeout,
-          ValueProvider<Integer> readTimeout,
-          ValueProvider<File> scbFile,
-          ValueProvider<byte[]> scbStream) {
-
-    Cluster.Builder builder = Cluster.builder();
-
-    if (scbFile != null) {
-      builder.withCloudSecureConnectBundle(scbFile.get());
-    } else if (scbStream != null) {
-      builder.withCloudSecureConnectBundle(new ByteArrayInputStream(scbStream.get()));
-    } else {
-      throw new IllegalArgumentException("Cloud Secure Bundle is Required");
-    }
-    builder.withAuthProvider(new PlainTextAuthProvider("token", token.get()));
-    if (consistencyLevel != null) {
-      builder.withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.valueOf(consistencyLevel.get())));
-    }
-
-    SocketOptions socketOptions = new SocketOptions();
-    builder.withSocketOptions(socketOptions);
-
-    if (connectTimeout != null) {
-      socketOptions.setConnectTimeoutMillis(connectTimeout.get());
-    }
-
-    if (readTimeout != null) {
-      socketOptions.setReadTimeoutMillis(readTimeout.get());
-    }
-    Cluster cluster = builder.build();
-    LOG.info("Connected to cluster: {}", cluster.getMetadata().getClusterName());
-    return builder.build();
-  }
-
-  /** Mutator allowing to do side effects into Apache Cassandra database. */
+   * Mutator allowing to do side effects into Apache Cassandra database.
+   **/
   private static class Mutator<T> {
+
     /**
      * The threshold of 100 concurrent async queries is a heuristic commonly used by the Apache
      * Cassandra community. There is no real gain to expect in tuning this value.
@@ -777,21 +729,21 @@ public class AstraIO {
     private static final int CONCURRENT_ASYNC_QUERIES = 100;
 
     private final Cluster cluster;
+
     private final Session session;
+
     private final SerializableFunction<Session, Mapper> mapperFactoryFn;
+
     private List<Future<Void>> mutateFutures;
+
     private final BiFunction<Mapper<T>, T, Future<Void>> mutator;
+
     private final String operationName;
 
     Mutator(Write<T> spec, BiFunction<Mapper<T>, T, Future<Void>> mutator, String operationName) {
-      this.cluster = getCluster(
-                        spec.token(),
-                        ValueProvider.StaticValueProvider.of(ConsistencyLevel.LOCAL_QUORUM.name()),
-                        spec.connectTimeout(),
-                        spec.readTimeout(),
-                        spec.secureConnectBundle(),
-                        spec.secureConnectBundleData());
-      this.session = cluster.connect(spec.keyspace().get());
+      this.cluster    = AstraConnectionManager.getInstance().getCluster(spec);
+      //this.session    = cluster.connect(spec.keyspace().get());
+      this.session    = AstraConnectionManager.getInstance().getSession(spec);
       this.mapperFactoryFn = spec.mapperFactoryFn();
       this.mutateFutures = new ArrayList<>();
       this.mutator = mutator;

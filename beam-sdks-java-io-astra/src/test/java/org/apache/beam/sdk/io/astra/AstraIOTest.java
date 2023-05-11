@@ -31,11 +31,11 @@ public class AstraIOTest implements Serializable {
     // --> Static Configuration
     public static final String TOKEN            = "AstraCS:uZclXTYecCAqPPjiNmkezapR:e87d6edb702acd87516e4ef78e0c0e515c32ab2c3529f5a3242688034149a0e4";
     public static final String ASTRA_ZIP_FILE   = "/Users/cedricklunven/Downloads/scb-demo.zip";
-    public static final String ASTRA_KEYSPACE   = "demo";
+    public static final String ASTRA_KEYSPACE   = "gcp_integrations";
     // <--
 
     /** Logger for the Class. */
-    private static final Logger LOG = LoggerFactory.getLogger(AstraIO.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AstraIOTest.class);
 
     /**
      * Pipeline reference
@@ -65,19 +65,16 @@ public class AstraIOTest implements Serializable {
 
     @Test
     public void shouldWriteIntoAstra() {
-        LOG.info("WRITE DATA INTO ASTRA");
-        pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(100)))
+        LOG.info("Writing 10.000 items:");
+        long top = System.currentTimeMillis();
+        pipelineWrite.apply(Create.of(AstraIOTestUtils.generateTestData(10000)))
                 .apply(AstraIO.<SimpleDataEntity>write()
                         .withToken(TOKEN)
                         .withSecureConnectBundle(new File(ASTRA_ZIP_FILE))
                         .withKeyspace(ASTRA_KEYSPACE)
                         .withEntity(SimpleDataEntity.class));
         pipelineWrite.run().waitUntilFinish();
-
-        List<Row> results = session.execute("SELECT * FROM simpledata").all();
-        for (Row r : results) {
-            LOG.info("id={} and data={}", r.getInt("id"), r.getString("data"));
-        }
+        LOG.info("+ Loaded in {} ms", System.currentTimeMillis() - top);
     }
 
     @Test
@@ -85,6 +82,7 @@ public class AstraIOTest implements Serializable {
         LOG.info("READ DATA FROM ASTRA");
         pipelineRead = TestPipeline.create();
         LOG.info("+ Pipeline created");
+        long top = System.currentTimeMillis();
         PCollection<SimpleDataEntity> simpleDataPCollection =
                 pipelineRead.apply(org.apache.beam.sdk.io.astra.AstraIO.<SimpleDataEntity>read()
                                 .withToken(TOKEN)
@@ -96,16 +94,7 @@ public class AstraIOTest implements Serializable {
                                 .withEntity(SimpleDataEntity.class));
         // Results ?
         PAssert.thatSingleton(simpleDataPCollection.apply("Count", Count.globally())).isEqualTo(2L);
-
-        // Count number of items
-        //PAssert.thatMap()
-        //simpleDataPCollection.
-        //LOG.info("+ OK");
-    }
-
-    @Test
-    public void shouldReadWithQueryFromAstra() {
-
+        LOG.info("Done in {} ms", System.currentTimeMillis() - top);
     }
 
     @AfterClass

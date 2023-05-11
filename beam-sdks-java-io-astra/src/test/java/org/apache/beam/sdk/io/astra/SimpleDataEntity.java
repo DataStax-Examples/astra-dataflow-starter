@@ -6,7 +6,7 @@ import com.datastax.driver.mapping.annotations.Table;
 
 import java.io.Serializable;
 
-@Table(name = "simpledata", keyspace = "demo")
+@Table(name = "simpledata")
 public class SimpleDataEntity implements Serializable {
 
     @PartitionKey

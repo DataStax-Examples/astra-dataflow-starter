@@ -22,28 +22,32 @@ import com.dtx.astra.pipelines.utils.AstraIOTestUtils;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.astra.AstraCqlQueryPTransform;
 import org.apache.beam.sdk.io.astra.AstraIO;
 import org.apache.beam.sdk.options.*;
 import org.apache.beam.sdk.transforms.Create;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+
+import static com.dtx.astra.pipelines.utils.AstraIOGcpUtils.readSecureBundleSecret;
+import static com.dtx.astra.pipelines.utils.AstraIOGcpUtils.readTokenSecret;
 
 /**
  * Load Data with Dataflow.
  *
 
  mvn -Pdataflow-runner compile exec:java \
- -Dexec.mainClass=com.dtx.astra.pipelines.beam.dataflow.BulkDataLoadWithDataflow \
+ -Dexec.mainClass=com.dtx.astra.pipelines.dataflow.BulkDataLoadWithDataflow \
  -Dexec.args="\
- --astraToken=projects/747469159044/secrets/astra-token/versions/1 \
- --secureConnectBundle=projects/747469159044/secrets/cedrick-demo-scb/versions/1 \
- --keyspace=demo \
+ --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
+ --secureConnectBundle=projects/747469159044/secrets/cedrick-demo-scb/versions/2 \
+ --keyspace=gcp_integrations \
  --runner=DataflowRunner \
  --project=integrations-379317 \
  --region=us-central1"
-
 
  */
 public class BulkDataLoadWithDataflow {
@@ -81,34 +85,41 @@ public class BulkDataLoadWithDataflow {
    */
   public static void main(String[] args) throws IOException {
     LOGGER.info("Starting Pipeline");
+    long top = System.currentTimeMillis();
+
     // Parsing Parameters
     LoadDataPipelineOptions astraOptions = PipelineOptionsFactory
-            .fromArgs(args)
-            .withValidation()
+            .fromArgs(args).withValidation()
             .as(LoadDataPipelineOptions.class);
-    FileSystems.setDefaultPipelineOptions(astraOptions);
+    LOGGER.info("+ Parameters have been parsed and validated after {}", System.currentTimeMillis() - top);
 
-    // Extract Secrets from GCP
-    SecretManagerServiceClient client = SecretManagerServiceClient.create();
-    String astraToken = client
-            .accessSecretVersion(astraOptions.getAstraToken())
-            .getPayload().getData()
-            .toStringUtf8();
-    LOGGER.info("+ Token retrieved");
-    byte[] astraSecureBundle = client
-            .accessSecretVersion(astraOptions.getSecureConnectBundle())
-            .getPayload().getData()
-            .toByteArray();
-    LOGGER.info("+ Secure connect bundle retrieved");
+
+    String astraToken = readTokenSecret(astraOptions.getAstraToken());
+    byte[] astraSecureBundle = readSecureBundleSecret(astraOptions.getSecureConnectBundle());
+    LOGGER.info("+ Secrets Parsed after {}", System.currentTimeMillis() - top);
 
     // Running Pipeline
     Pipeline pipelineWrite = Pipeline.create(astraOptions);
-    pipelineWrite.apply("Create 100 random items", Create.of(AstraIOTestUtils.generateTestData(100)))
-                 .apply("Write into Astra", AstraIO.<SimpleDataEntity>write()
-                         .withToken(astraToken)
-                         .withKeyspace(astraOptions.getKeyspace())
-                         .withSecureConnectBundleData(astraSecureBundle)
-                         .withEntity(SimpleDataEntity.class));
+    int itemCount = 1000000;
+    LOGGER.info("Load {} Random generated Data intoAstra", itemCount);
+
+    SecretManagerServiceClient client = SecretManagerServiceClient.create();
+    pipelineWrite
+            // 1. Mock Data
+            .apply("Generate " + itemCount, Create.of(AstraIOTestUtils.generateTestData(itemCount)))
+
+            // 2. Create Table
+            .apply("Create Table", new AstraCqlQueryPTransform<SimpleDataEntity>(
+                    astraToken, astraSecureBundle, astraOptions.getKeyspace(),
+                    SimpleDataEntity.cqlCreateTable()))
+
+            //3. Insert Records
+            .apply("Write into Astra", AstraIO.<SimpleDataEntity>write()
+                    .withToken(astraToken)
+                    .withSecureConnectBundleData(astraSecureBundle)
+                    .withKeyspace(astraOptions.getKeyspace())
+                    .withEntity(SimpleDataEntity.class));
+
     pipelineWrite.run().waitUntilFinish();
   }
 }

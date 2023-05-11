@@ -13,6 +13,7 @@
     <module>beam-sdks-java-io-astra</module>
     <module>samples-astra-beam-pipelines</module>
     <module>flex-templates/csv_to_astra</module>
+    <module>flex-templates/bigquery_to_astra</module>
   </modules>
 
   <properties>
@@ -134,12 +135,6 @@
         <groupId>info.archinnov</groupId>
         <artifactId>achilles-junit</artifactId>
         <version>${achilles.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-        <version>${beam.version}</version>
       </dependency>
 
       <dependency>
