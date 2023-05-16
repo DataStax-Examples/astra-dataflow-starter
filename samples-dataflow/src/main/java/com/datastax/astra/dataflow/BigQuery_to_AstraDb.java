@@ -1,9 +1,13 @@
 package com.datastax.astra.dataflow;
 
+import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
 import com.google.api.services.bigquery.Bigquery;
+import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.astra.db.options.AstraDbWriteOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +39,7 @@ public class BigQuery_to_AstraDb {
     /**
      * BigQuery to Astra
      */
-    public interface BigQueryTableToAstraPipelineOptions extends GcpOptions {
-
-        // ==== FROM BIG QUERY ====
+    public interface BigQueryToAstraDbOptions extends GcpOptions, AstraDbWriteOptions {
 
         @Description("BigQuery dataset name")
         @Default.String("dataflow_input_tiny")
@@ -49,22 +51,6 @@ public class BigQuery_to_AstraDb {
         String getBigQueryTable();
         void setBigQueryTable(String table);
 
-        // ==== TO ASTRA ====
-
-        @Description("Astra Token resource id in Google Secret Manager")
-        @Validation.Required
-        String getAstraToken();
-        void setAstraToken(String resourceId);
-
-        @Description("Secure Connect Bundle resource id in Google Secret Manager")
-        @Validation.Required
-        String getSecureConnectBundle();
-        void setSecureConnectBundle(String resourceId);
-
-        @Description("Source Keyspace")
-        @Validation.Required
-        String getKeyspace();
-        void setKeyspace(String keyspace);
     }
 
     /**
@@ -74,19 +60,18 @@ public class BigQuery_to_AstraDb {
 
     /**
      * Main.
-     *
-     * @param args
+     */
+    public static void main(String[] args) {
 
-    public static void main(String[] args) throws IOException {
-
-        BigQueryTableToAstraPipelineOptions bq2AstraOptions = PipelineOptionsFactory
+        BigQueryToAstraDbOptions options = PipelineOptionsFactory
                 .fromArgs(args).withValidation()
-                .as(BigQueryTableToAstraPipelineOptions.class);
+                .as(BigQueryToAstraDbOptions.class);
 
-        // --> Extract Secrets from Google Secret Manager
-        String astraToken       = GoogleSecretManagerUtils.readTokenSecret(bq2AstraOptions.getAstraToken());
-        byte[] astraSecureBundle = GoogleSecretManagerUtils.readSecureBundleSecret(bq2AstraOptions.getSecureConnectBundle());
-        LOGGER.info("+ Secrets Parsed");
+        // Read Input From Google Secrets
+        String astraToken = GoogleSecretManagerUtils.
+                readTokenSecret(options.getAstraToken());
+        byte[] astraSecureBundle = GoogleSecretManagerUtils.
+                readSecureBundleSecret(options.getAstraSecureConnectBundle());
 
         Pipeline bq2AstraPipeline = Pipeline.create(bq2AstraOptions);
         LOGGER.info("+ Pipeline Created");

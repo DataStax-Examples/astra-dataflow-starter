@@ -349,13 +349,15 @@ We assume that you have already executed pipeline described in `3.1` and that gl
 export ASTRA_KEYSPACE=samples_dataflow
 export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
 export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
-export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
+export GCP_PROJECT_ID=integrations-379317
 ```
 
 - ✅ **Create a bucket to save the exported values**
 
 ```bash
 gsutil mb -c STANDARD -l US gs://astra_dataflow_outputs
+export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs
+
 ```
 
 - ✅ **Make sure you are in `samples-dataflow` folder**
@@ -375,7 +377,7 @@ pwd
  --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
  --keyspace=samples_dataflow \
  --table=languages \
- --outputFolder=gs://astra_dataflow_outputs \
+ --outputFolder=gs://astra_dataflow_output \
  --runner=DataflowRunner \
  --project=integrations-379317 \
  --region=us-central1"
@@ -383,47 +385,94 @@ pwd
 
 ### 3.3 - AstraDb To BigQuery
 
-We assume that you have already executed pipeline described in `3.1` and that `gloud` is set up.
+![CSV to Astra](img/astra_to_gcs.png)
 
-- ✅ **Make sure you have those variables initialized**
+- ✅ **`setup` - Prerequisites:** We assume that you have already executed pipeline described in `3.1` and that `gloud` is set up._
 
-```bash
-export ASTRA_KEYSPACE=samples_dataflow
-export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
-export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
-export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
-```
-
-- ✅ **Create Table with proper structure in BigQuery**
-
-```diff
-- TODO with command bq
-```
-
-- ✅ **Make sure you are in `samples-dataflow` folder**
+- ✅ **`setup` - Make sure you are in `samples-dataflow` folder**
 
 ```bash
 cd samples-dataflow
 pwd
 ```
 
+- ✅ **`1/X` - Make sure you have those variables initialized**
+
+```bash
+export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
+export GCP_PROJECT_ID=integrations-379317
+```
+
+- ✅ **`2/X` - Create a dataset in `dataflow_input_tiny` BigQuery with the following command**
+
+```bash
+export GCP_BIGQUERY_DATASET=dataflow_input_us
+bq mk ${GCP_BIGQUERY_DATASET}
+bq ls --format=pretty
+```
+
+- ✅ **`3/X` - Create a json `schema_language_codes.json` file with the schema of the table** We have created it for you [here](samples-dataflow/src/main/resources/schema_language_codes.json)
+ 
+```json
+[
+  {
+    "mode": "REQUIRED",
+    "name": "code",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "language",
+    "type": "STRING"
+  }
+]
+```
+
+- ✅ **`4/X` - Create a table with specified schema**
+
+```bash
+export GCP_BIGQUERY_TABLE=destination
+bq mk --table --schema src/main/resources/schema_language_codes.json ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
+```
+
+- ✅ **`5/X` - List tables in your dataset**
+
+```bash
+bq ls --format=pretty ${GCP_PROJECT_ID}:${GCP_BIGQUERY_DATASET}
+```
+
+- Get Table schema
+
+```bash
+bq show --schema --format=prettyjson ${GCP_PROJECT_ID}:${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
+```
+
 - ✅ **Run the pipeline**
 
 ```bash
- mvn compile exec:java \
- -Dexec.mainClass=com.datastax.astra.dataflow.BigQuery_To_AstraDb \
+mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_BigQuery \
  -Dexec.args="\
- --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
  --keyspace=samples_dataflow \
  --table=languages \
- --outputFolder=gs://astra_dataflow_outputs \
+ --bigQueryDataset=${GCP_BIGQUERY_DATASET} \
+ --bigQueryTable=${GCP_BIGQUERY_TABLE} \
  --runner=DataflowRunner \
- --project=integrations-379317 \
+ --project=${GCP_PROJECT_ID} \
  --region=us-central1"
 ```
 
-### 3.4 - BigQuery to AstraDb
+- ✅ **Show the Content of the Table**
 
+```bash
+bq head -n 10 ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
+```
+
+### 3.4 - BigQuery to AstraDb
 
 

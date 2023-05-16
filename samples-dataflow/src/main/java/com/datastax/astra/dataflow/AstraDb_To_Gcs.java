@@ -21,17 +21,16 @@ import org.slf4j.LoggerFactory;
  *
 
  mvn compile exec:java \
- -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_to_Gcs \
+ -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_Gcs \
  -Dexec.args="\
- --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
  --keyspace=samples_dataflow \
  --table=languages \
- --targetFolder=gs://dataflow-apache-quickstart_integrations-379317/temp/
+ --outputFolder=${GCP_OUTPUT_CSV} \
  --runner=DataflowRunner \
- --project=integrations-379317 \
- --region=us-central1 \
- --gcpTempLocation=gs://dataflow-apache-quickstart_integrations-379317/temp/"
+ --project=${GCP_PROJECT_ID} \
+ --region=us-central1"
 
  mvn compile exec:java \
  -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_Gcs \
@@ -121,7 +120,7 @@ public class AstraDb_To_Gcs {
     private static class MapRecordAsCsvLine extends DoFn<LanguageCode, String> {
         @DoFn.ProcessElement
         public void processElement(ProcessContext c) {
-            c.output(c.element().getCode() + ";" + c.element().getLanguage());
+            c.output(c.element().toCsvRow());
         }
     }
 

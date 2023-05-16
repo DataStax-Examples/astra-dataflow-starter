@@ -5,6 +5,7 @@ import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
+import com.google.api.services.bigquery.model.TableRow;
 
 import java.io.Serializable;
 
@@ -49,6 +50,40 @@ public class LanguageCode implements Serializable {
     public static LanguageCode fromCsvRow(String csvRow) {
         String[] chunks = csvRow.split(",");
         return new LanguageCode(chunks[0], chunks[1]);
+    }
+
+    /**
+     * Convert to CSV Row.
+     *
+     * @return
+     *      csv Row.
+     */
+    public String toCsvRow() {
+        return code + "," + language;
+    }
+
+    /**
+     * Read From BigQuery table.
+     *
+     * @param row
+     *      current big query row
+     * @return
+     *      current bean.
+     */
+    public static LanguageCode fromBigQueryTableRow(TableRow row) {
+        return new LanguageCode((String) row.get("code"), (String) row.get("language"));
+    }
+
+    /**
+     * Convert to BigQuery TableRow.
+     * @return
+     *      big query table row
+     */
+    public TableRow toBigQueryTableRow() {
+        TableRow row = new TableRow();
+        row.set("code", this.code);
+        row.set("language", this.language);
+        return row;
     }
 
     /**

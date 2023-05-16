@@ -84,7 +84,7 @@ public class AstraDb_To_Csv {
 
         @ProcessElement
         public void processElement(ProcessContext c) {
-            c.output(c.element().getCode() + ";" + c.element().getLanguage());
+            c.output(c.element().toCsvRow());
         }
     }
 

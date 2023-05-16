@@ -52,6 +52,16 @@ public class LanguageCode implements Serializable {
     }
 
     /**
+     * Convert to CSV Row.
+     *
+     * @return
+     *      csv Row.
+     */
+    public String toCsvRow() {
+        return code + "," + language;
+    }
+
+    /**
      * Help generating the Target Table if it does not exist.
      *
      * @return
