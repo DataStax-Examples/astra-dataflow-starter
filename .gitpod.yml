@@ -7,4 +7,6 @@ tasks:
     command: |
       unset JAVA_TOOL_OPTIONS
       source /home/gitpod/.astra/cli/astra-init.sh
+      clear
+      astra
 

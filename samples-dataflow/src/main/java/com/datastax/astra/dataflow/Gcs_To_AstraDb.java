@@ -85,7 +85,6 @@ public class Gcs_To_AstraDb {
     String astraToken = GoogleSecretManagerUtils.readTokenSecret(options.getAstraToken());
     byte[] astraSecureBundle = GoogleSecretManagerUtils.readSecureBundleSecret(options.getAstraSecureConnectBundle());
     LOGGER.info("+ Secrets Parsed after {} millis.", System.currentTimeMillis() - top);
-    System.out.println(astraSecureBundle.length);
 
     // Running Pipeline
     Pipeline pipelineWrite = Pipeline.create(options);

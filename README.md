@@ -11,11 +11,18 @@ Those flows leverage the `AstraDbIO` component available at [this repo](https://
 - [1.1 - Setup your local environment](#11-setup-your-local-environment)
 - [1.2 - Setup your Astra environment](#12-setup-your-astra-environment)
 
-[**2 - Sample Apache Beam**](#2-sample-apache-beam)
+[**2 - Samples Apache Beam**](#2-sample-apache-beam)
 - [2.1 - CSV to Astra](#21---csv-to-astra)
 - [2.2 - Astra to CSV](#22---astra-to-csv)
 
-[**3 - Samples Dataflow**](#3-samples-dataflow)
+[**3 - Samples Dataflow**](#3---samples-dataflow)
+- [3.1 - Gcs to Astra](#31---gcs-to-astra)
+- [3.2 - Astra to Gcs](#32---astra-to-gcs)
+- [3.3 - AstraDb to BigQuery](#33---astradb-to-bigquery)
+- [3.4 - BigQuery to AstraDb](#34---bigquery-to-astradb)
+
+
+----
 
 ## 1. Prerequisites
 
@@ -191,17 +198,17 @@ cat `pwd`/src/test/resources/out/language-00001-of-00004
 
 ![CSV to Astra](img/gcs_to_astra.png)
 
-- ✅ **`1/13` - Create GCP Project**
+- ✅ **`1/15` - Create GCP Project**
 
 > Note: If you don't plan to keep the resources that you create in this guide, create a project instead of selecting an existing project. After you finish these steps, you can delete the project, removing all resources associated with the project. Create a new Project in Google Cloud Console or select an existing one.
 
 In the Google Cloud console, on the project selector page, select or [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
 
-- ✅ **`2/13` - Enable Billing**: 
+- ✅ **`2/15` - Enable Billing**: 
 
 Make sure that billing is enabled for your Cloud project. Learn how to [check if billing is enabled on a project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled)
 
-- ✅ **`3/13` - Save project ID**: The project identifier is available in the column `ID`. We will need it so let's save it as an environment variable
+- ✅ **`3/15` - Save project ID**: The project identifier is available in the column `ID`. We will need it so let's save it as an environment variable
 
 ```bash
 export GCP_PROJECT_ID=integrations-379317
@@ -210,27 +217,27 @@ export GCP_USER=cedrick.lunven@datastax.com
 export GCP_COMPUTE_ENGINE=747469159044-compute@developer.gserviceaccount.com
 ```
 
-- ✅ **`4/13` - Download and install gCoud CLI**
+- ✅ **`4/15` - Download and install gCoud CLI**
 
 ```
 curl https://sdk.cloud.google.com | bash
 ```
 
-- ✅ **`5/13` - Authenticate with Google Cloud**
+- ✅ **`5/15` - Authenticate with Google Cloud**
 
 Run the following command to authenticate with Google Cloud:
 ```
 gcloud auth login
 ```
 
-- ✅ **`6/13` - Set your project: If you haven't set your project yet, use the following command to set your project ID:**
+- ✅ **`6/15` - Set your project: If you haven't set your project yet, use the following command to set your project ID:**
 
 ```
 gcloud config set project ${GCP_PROJECT_ID}
 gcloud projects describe ${GCP_PROJECT_ID}
 ```
 
-- ✅ **`7/13` - Enable needed API**
+- ✅ **`7/15` - Enable needed API**
 
 ```
 gcloud services enable dataflow compute_component \
@@ -239,7 +246,7 @@ gcloud services enable dataflow compute_component \
    cloudresourcemanager.googleapis.com
 ```
 
-- ✅ **`8/13` - Add Roles to `dataflow` users:** To complete the steps, your user account must have the Dataflow Admin role and the Service Account User role. The Compute Engine default service account must have the Dataflow Worker role. To add the required roles in the Google Cloud console:
+- ✅ **`8/15` - Add Roles to `dataflow` users:** To complete the steps, your user account must have the Dataflow Admin role and the Service Account User role. The Compute Engine default service account must have the Dataflow Worker role. To add the required roles in the Google Cloud console:
 
 ```
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
@@ -256,16 +263,15 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
     --role=roles/storage.objectAdmin
 ```
 
-- ✅ **`9/13` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
+- ✅ **`9/15` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
 
 ```
 gsutil mb -c STANDARD -l US gs://astra_dataflow_inputs
 gsutil cp src/test/resources/language-codes.csv gs://astra_dataflow_inputs/csv/
-gsutil mb -c STANDARD -l US gs://astra_dataflow_outputs
 gsutil ls
 ```
 
-- ✅ **`10/13` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
+- ✅ **`10/15` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
 
     ```
     gcloud secrets create astra-token \
@@ -287,37 +293,37 @@ gsutil ls
     gcloud secrets list
     ```
 
-- ✅ **`11/13` - Create new keyspace in the DB if needed**
+- ✅ **`11/15` - Create new keyspace in the DB if needed**
 
 ```bash
 astra db create-keyspace demo -k samples_dataflow --if-not-exist
 ```
 
 
-- ✅ **`12/13` - Make sure you are in `samples-beam` folder**
+- ✅ **`12/15` - Make sure you are in `samples-dataflow` folder**
 
 ```bash
-cd samples-beam
+cd samples-dataflow
 pwd
 ```
 
-- ✅ **`13/13` - Setup environment variables**
+- ✅ **`13/15` - Setup environment variables**
 
 ```bash
-export GCP_INPUT_CSV=gs://astra_dataflow_inputs/csv/language-codes.csv
-export GCP_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
-export GCP_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
 export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export GCP_INPUT_CSV=gs://astra_dataflow_inputs/csv/language-codes.csv
 ```
 
-- ✅ **Run the demo**
+- ✅ **`14/15` - Run the demo**
 
 ```bash
  mvn compile exec:java \
  -Dexec.mainClass=com.datastax.astra.dataflow.Gcs_To_AstraDb \
  -Dexec.args="\
- --astraToken=${GCP_SECRET_TOKEN} \
- --astraSecureConnectBundle=${GCP_SECRET_SECURE_BUNDLE} \
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
  --keyspace=${ASTRA_KEYSPACE} \
  --csvInput=${GCP_INPUT_CSV} \
  --project=${GCP_PROJECT_ID} \
@@ -325,10 +331,99 @@ export ASTRA_KEYSPACE=samples_dataflow
  --region=us-central1"
 ```
 
-- ✅ **Check that data is in the table**
+- ✅ **`15/15` - Check that data is in the table**
 
 ```bash
 astra db cqlsh demo \
    -k samples_dataflow \
    -e "SELECT * FROM languages LIMIT 10;"
 ```
+
+### 3.2 - Astra To GCS
+
+We assume that you have already executed pipeline described in `3.1` and that gloud is set up.
+
+- ✅ **Make sure you have those variables initialized**
+
+```bash
+export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
+```
+
+- ✅ **Create a bucket to save the exported values**
+
+```bash
+gsutil mb -c STANDARD -l US gs://astra_dataflow_outputs
+```
+
+- ✅ **Make sure you are in `samples-dataflow` folder**
+
+```bash
+cd samples-dataflow
+pwd
+```
+
+- ✅ **Run the pipeline**
+
+```bash
+ mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_Gcs \
+ -Dexec.args="\
+ --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
+ --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
+ --keyspace=samples_dataflow \
+ --table=languages \
+ --outputFolder=gs://astra_dataflow_outputs \
+ --runner=DataflowRunner \
+ --project=integrations-379317 \
+ --region=us-central1"
+```
+
+### 3.3 - AstraDb To BigQuery
+
+We assume that you have already executed pipeline described in `3.1` and that `gloud` is set up.
+
+- ✅ **Make sure you have those variables initialized**
+
+```bash
+export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
+```
+
+- ✅ **Create Table with proper structure in BigQuery**
+
+```diff
+- TODO with command bq
+```
+
+- ✅ **Make sure you are in `samples-dataflow` folder**
+
+```bash
+cd samples-dataflow
+pwd
+```
+
+- ✅ **Run the pipeline**
+
+```bash
+ mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.BigQuery_To_AstraDb \
+ -Dexec.args="\
+ --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
+ --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
+ --keyspace=samples_dataflow \
+ --table=languages \
+ --outputFolder=gs://astra_dataflow_outputs \
+ --runner=DataflowRunner \
+ --project=integrations-379317 \
+ --region=us-central1"
+```
+
+### 3.4 - BigQuery to AstraDb
+
+
+
