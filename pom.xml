@@ -4,16 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.datastax.astra</groupId>
-  <artifactId>beam-sdk-astra</artifactId>
-  <name>Beam SDK for Astra Integrations</name>
+  <artifactId>astra-beam-starter</artifactId>
+  <name>Starter for Astra with Beam</name>
   <version>1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
-    <module>beam-sdks-java-io-astra</module>
-    <module>samples-astra-beam-pipelines</module>
-    <module>flex-templates/csv_to_astra</module>
-    <module>flex-templates/bigquery_to_astra</module>
+    <module>samples-beam</module>
+    <module>samples-dataflow</module>
   </modules>
 
   <properties>
@@ -23,6 +21,7 @@
     <!-- Astra -->
     <cassandra.driver.oss.version>3.11.3</cassandra.driver.oss.version>
     <astra.sdk.version>0.4</astra.sdk.version>
+    <astra.beam-sdk.version>1.0-SNAPSHOT</astra.beam-sdk.version>
     <!-- Third Parties -->
     <guava.version>31.1-jre</guava.version>
     <slf4j.version>2.0.6</slf4j.version>
@@ -80,6 +79,12 @@
         <version>${beam.version}</version>
       </dependency>
 
+      <!-- BEAM ASTRA -->
+      <dependency>
+        <groupId>com.datastax.astra</groupId>
+        <artifactId>beam-sdks-java-io-astra</artifactId>
+        <version>${astra.beam-sdk.version}</version>
+      </dependency>
 
       <!-- Logging -->
       <dependency>
