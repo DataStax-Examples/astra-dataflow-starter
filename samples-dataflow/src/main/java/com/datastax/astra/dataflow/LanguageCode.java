@@ -1,23 +1,18 @@
-package com.datastax.astra.beam;
+package com.datastax.astra.dataflow;
 
 import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.schemabuilder.Create;
 import com.datastax.driver.core.schemabuilder.SchemaBuilder;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
-import com.google.api.services.bigquery.model.TableRow;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 
 import java.io.Serializable;
 
 /**
  * DTO for Language Code.
  */
-@Table(name = LanguageCodeEntity.TABLE_NAME)
-public class LanguageCodeEntity implements Serializable {
+@Table(name = LanguageCode.TABLE_NAME)
+public class LanguageCode implements Serializable {
 
     /** Constants for mapping. */
     public static final String TABLE_NAME      = "languages";
@@ -34,33 +29,39 @@ public class LanguageCodeEntity implements Serializable {
     /**
      * Constructor
      */
-    public LanguageCodeEntity() {
+    public LanguageCode() {
     }
 
     /**
-     * Help generating the Target Table if it does not exist.
+     * Full-fledged constructor
+     */
+    public LanguageCode(String code, String language) {
+        this.code = code;
+        this.language = language;
+    }
+
+    /**
+     * Helping generate the Target Table if it does not exist.
      *
      * @return
      *      create statement
      */
-    public static LanguageCodeEntity fromTableRow(@UnknownKeyFor @NonNull @Initialized TableRow tableRow) {
-        LanguageCodeEntity entity = new LanguageCodeEntity();
-        entity.setCode((String) tableRow.get(COLUMN_CODE));
-        entity.setLanguage((String) tableRow.get(COLUMN_LANGUAGE));
-        return entity;
+    public static LanguageCode fromCsvRow(String csvRow) {
+        String[] chunks = csvRow.split(",");
+        return new LanguageCode(chunks[0], chunks[1]);
     }
 
     /**
-     * Help generating the Target Table if it does not exist.
+     * Helping generate the Target Table if it does not exist.
      *
      * @return
      *      create statement
      */
-    public static Create createTableStatement() {
+    public static String cqlCreateTable() {
         return SchemaBuilder.createTable(TABLE_NAME)
                 .addPartitionKey(COLUMN_CODE, DataType.text())
                 .addColumn(COLUMN_LANGUAGE, DataType.text())
-                .ifNotExists();
+                .ifNotExists().toString();
     }
 
     /**

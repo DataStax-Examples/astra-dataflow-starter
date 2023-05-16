@@ -18,7 +18,6 @@
     <dependency>
       <groupId>com.datastax.astra</groupId>
       <artifactId>beam-sdks-java-io-astra</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>

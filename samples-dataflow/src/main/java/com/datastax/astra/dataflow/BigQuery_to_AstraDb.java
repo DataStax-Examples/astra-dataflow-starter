@@ -1,21 +1,12 @@
-package com.datastax.astra.beam.dataflow;
+package com.datastax.astra.dataflow;
 
-import com.datastax.astra.beam.LanguageCodeEntity;
-import com.datastax.astra.beam.utils.AstraIOGcpUtils;
 import com.google.api.services.bigquery.Bigquery;
-import com.google.api.services.bigquery.model.TableReference;
-import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.astra.AstraIO;
-import org.apache.beam.sdk.io.astra.AstraCqlQueryPTransform;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.options.*;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Validation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * Big Query to Astra
@@ -85,7 +76,7 @@ public class BigQuery_to_AstraDb {
      * Main.
      *
      * @param args
-     */
+
     public static void main(String[] args) throws IOException {
 
         BigQueryTableToAstraPipelineOptions bq2AstraOptions = PipelineOptionsFactory
@@ -93,8 +84,8 @@ public class BigQuery_to_AstraDb {
                 .as(BigQueryTableToAstraPipelineOptions.class);
 
         // --> Extract Secrets from Google Secret Manager
-        String astraToken       = AstraIOGcpUtils.readTokenSecret(bq2AstraOptions.getAstraToken());
-        byte[] astraSecureBundle = AstraIOGcpUtils.readSecureBundleSecret(bq2AstraOptions.getSecureConnectBundle());
+        String astraToken       = GoogleSecretManagerUtils.readTokenSecret(bq2AstraOptions.getAstraToken());
+        byte[] astraSecureBundle = GoogleSecretManagerUtils.readSecureBundleSecret(bq2AstraOptions.getSecureConnectBundle());
         LOGGER.info("+ Secrets Parsed");
 
         Pipeline bq2AstraPipeline = Pipeline.create(bq2AstraOptions);
@@ -127,7 +118,7 @@ public class BigQuery_to_AstraDb {
                            .withEntity(LanguageCodeEntity.class));
 
         bq2AstraPipeline.run().waitUntilFinish();
-    }
+    }*/
 
 
 }

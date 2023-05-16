@@ -1,17 +1,26 @@
-package com.datastax.astra.beam.utils;
+package com.datastax.astra.dataflow.utils;
 
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 
 import java.io.IOException;
 
 /**
- * Utilities to work with GCP and Astra
+ * Utilities to read secrets in Google Secret Manager.
  */
-public class AstraIOGcpUtils {
+public class GoogleSecretManagerUtils {
 
+    /**
+     * Secret Manager Client
+     */
     public static SecretManagerServiceClient client;
 
     /**
+     * Hide Default constructor for utiltiy class
+     */
+    private GoogleSecretManagerUtils() {
+    }
+
+   /**
      * Access the Token.
      *
      * @param secretResourceId

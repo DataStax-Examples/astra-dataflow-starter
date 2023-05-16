@@ -12,54 +12,66 @@
     <artifactId>astra-beam-starter</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
+
+  <properties>
+    <slf4j.version>2.0.6</slf4j.version>
+    <logback.version>1.4.6</logback.version>
+
+    <guava.version>31.1-jre</guava.version>
+    <google.cloud.librairies>26.10.0</google.cloud.librairies>
+
+    <!-- does not update: match grpc 1.52.1 from Bom -->
+    <google.cloud-secretmanager.version>2.10.0</google.cloud-secretmanager.version>
+  </properties>
   
   <dependencies>
-  
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-core</artifactId>
-    </dependency>
 
     <dependency>
       <groupId>com.datastax.astra</groupId>
       <artifactId>beam-sdks-java-io-astra</artifactId>
-      <version>1.0-SNAPSHOT</version>
     </dependency>
-    
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>libraries-bom</artifactId>
+      <version>${google.cloud.librairies}</version>
+      <type>pom</type>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+      <version>${google.cloud-secretmanager.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
     </dependency>
 
     <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-secretmanager</artifactId>
-      <version>2.15.0</version>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+      <scope>runtime</scope>
     </dependency>
 
     <!-- Logger -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <version>${logback.version}</version>
     </dependency>
   </dependencies>
-
-  <profiles>
-   
-    <profile>
-      <id>dataflow-runner</id>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-          <scope>runtime</scope>
-        </dependency>
-      </dependencies>
-    </profile>
-  </profiles>
 
 </project>

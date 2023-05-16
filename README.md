@@ -7,15 +7,15 @@ Those flows leverage the `AstraDbIO` component available at [this repo](https://
 
 ## Table Of Content
 
-[**1 - Prerequisites**](#1-database-initialization)
-- [1.1 - Setup your local environment](#11---create-an-astra-account)
-- [1.2 - Setup your Astra environment](#12---create-an-astra-token)
+[**1 - Prerequisites**](#1-prerequisites)
+- [1.1 - Setup your local environment](#11-setup-your-local-environment)
+- [1.2 - Setup your Astra environment](#12-setup-your-astra-environment)
 
-[**2 - Sample Beam**](#1-database-initialization)
-- [2.1 - CSV to Astra](#11---create-an-astra-account)
-- [2.2 - Astra to CSV](#12---create-an-astra-token)
+[**2 - Sample Apache Beam**](#2-sample-apache-beam)
+- [2.1 - CSV to Astra](#21---csv-to-astra)
+- [2.2 - Astra to CSV](#22---astra-to-csv)
 
-[**3 - Samples Dataflow**](#1-database-initialization)
+[**3 - Samples Dataflow**](#3-samples-dataflow)
 
 ## 1. Prerequisites
 
@@ -63,8 +63,9 @@ source ~/.astra/cli/astra-init.sh
 - ✅ **Create your DataStax Astra account**:
 
 <a href="https://astra.dev/3B7HcYo">
-<br/><img src="https://awesome-astra.github.io/docs/img/astra/astra-signin-github-0.png" />
+<img src="https://awesome-astra.github.io/docs/img/astra/astra-signin-github-0.png" />
 </a>
+<br/>
 
 - ✅ **Create an Astra Token**
 
@@ -184,4 +185,150 @@ ls -l `pwd`/src/test/resources/out
 cat `pwd`/src/test/resources/out/language-00001-of-00004
 ```
 
+## 3 - Samples Dataflow
 
+### 3.1 - GCS To Astra
+
+![CSV to Astra](img/gcs_to_astra.png)
+
+- ✅ **`1/13` - Create GCP Project**
+
+> Note: If you don't plan to keep the resources that you create in this guide, create a project instead of selecting an existing project. After you finish these steps, you can delete the project, removing all resources associated with the project. Create a new Project in Google Cloud Console or select an existing one.
+
+In the Google Cloud console, on the project selector page, select or [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
+
+- ✅ **`2/13` - Enable Billing**: 
+
+Make sure that billing is enabled for your Cloud project. Learn how to [check if billing is enabled on a project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled)
+
+- ✅ **`3/13` - Save project ID**: The project identifier is available in the column `ID`. We will need it so let's save it as an environment variable
+
+```bash
+export GCP_PROJECT_ID=integrations-379317
+export GCP_PROJECT_CODE=747469159044
+export GCP_USER=cedrick.lunven@datastax.com
+export GCP_COMPUTE_ENGINE=747469159044-compute@developer.gserviceaccount.com
+```
+
+- ✅ **`4/13` - Download and install gCoud CLI**
+
+```
+curl https://sdk.cloud.google.com | bash
+```
+
+- ✅ **`5/13` - Authenticate with Google Cloud**
+
+Run the following command to authenticate with Google Cloud:
+```
+gcloud auth login
+```
+
+- ✅ **`6/13` - Set your project: If you haven't set your project yet, use the following command to set your project ID:**
+
+```
+gcloud config set project ${GCP_PROJECT_ID}
+gcloud projects describe ${GCP_PROJECT_ID}
+```
+
+- ✅ **`7/13` - Enable needed API**
+
+```
+gcloud services enable dataflow compute_component \
+   logging storage_component storage_api \
+   bigquery pubsub datastore.googleapis.com \
+   cloudresourcemanager.googleapis.com
+```
+
+- ✅ **`8/13` - Add Roles to `dataflow` users:** To complete the steps, your user account must have the Dataflow Admin role and the Service Account User role. The Compute Engine default service account must have the Dataflow Worker role. To add the required roles in the Google Cloud console:
+
+```
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+    --member="user:${GCP_USER}" \
+    --role=roles/iam.serviceAccountUser
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
+    --member="serviceAccount:${GCP_COMPUTE_ENGINE}" \
+    --role=roles/dataflow.admin
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
+    --member="serviceAccount:${GCP_COMPUTE_ENGINE}" \
+    --role=roles/dataflow.worker
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
+    --member="serviceAccount:${GCP_COMPUTE_ENGINE}" \
+    --role=roles/storage.objectAdmin
+```
+
+- ✅ **`9/13` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
+
+```
+gsutil mb -c STANDARD -l US gs://astra_dataflow_inputs
+gsutil cp src/test/resources/language-codes.csv gs://astra_dataflow_inputs/csv/
+gsutil mb -c STANDARD -l US gs://astra_dataflow_outputs
+gsutil ls
+```
+
+- ✅ **`10/13` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
+
+    ```
+    gcloud secrets create astra-token \
+       --data-file <(echo -n "${ASTRA_TOKEN}") \
+       --replication-policy="automatic"
+
+    gcloud secrets create cedrick-demo-scb \
+       --data-file ${ASTRA_SCB_PATH} \
+       --replication-policy="automatic"
+
+    gcloud secrets add-iam-policy-binding cedrick-demo-scb \
+        --member="serviceAccount:${GCP_COMPUTE_ENGINE}" \
+        --role='roles/secretmanager.secretAccessor'
+
+    gcloud secrets add-iam-policy-binding astra-token \
+        --member="serviceAccount:${GCP_COMPUTE_ENGINE}" \
+        --role='roles/secretmanager.secretAccessor'
+        
+    gcloud secrets list
+    ```
+
+- ✅ **`11/13` - Create new keyspace in the DB if needed**
+
+```bash
+astra db create-keyspace demo -k samples_dataflow --if-not-exist
+```
+
+
+- ✅ **`12/13` - Make sure you are in `samples-beam` folder**
+
+```bash
+cd samples-beam
+pwd
+```
+
+- ✅ **`13/13` - Setup environment variables**
+
+```bash
+export GCP_INPUT_CSV=gs://astra_dataflow_inputs/csv/language-codes.csv
+export GCP_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export GCP_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export ASTRA_KEYSPACE=samples_dataflow
+```
+
+- ✅ **Run the demo**
+
+```bash
+ mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.Gcs_To_AstraDb \
+ -Dexec.args="\
+ --astraToken=${GCP_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${GCP_SECRET_SECURE_BUNDLE} \
+ --keyspace=${ASTRA_KEYSPACE} \
+ --csvInput=${GCP_INPUT_CSV} \
+ --project=${GCP_PROJECT_ID} \
+ --runner=DataflowRunner \
+ --region=us-central1"
+```
+
+- ✅ **Check that data is in the table**
+
+```bash
+astra db cqlsh demo \
+   -k samples_dataflow \
+   -e "SELECT * FROM languages LIMIT 10;"
+```

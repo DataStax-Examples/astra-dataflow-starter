@@ -1,16 +1,9 @@
-package com.datastax.astra.beam.dataflow;
+package com.datastax.astra.dataflow;
 
-import com.datastax.astra.beam.SimpleDataEntity;
-import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
-import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.Compression;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.astra.AstraIO;
-import org.apache.beam.sdk.options.*;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +71,7 @@ public class AstraDb_to_Gcs {
      *      arguments
      * @throws Exception
      *      error occured in processing
-     */
+
     public static void main(String[] args) throws Exception {
         // Parse Options
         LOGGER.info("Starting 'ExportTableDataFlow' ....");
@@ -119,7 +112,7 @@ public class AstraDb_to_Gcs {
 
     /**
      * Transform in CSV lines.
-     */
+
     private static class MapRecordAsCsvLine extends DoFn<SimpleDataEntity, String> {
 
         @ProcessElement
@@ -128,6 +121,6 @@ public class AstraDb_to_Gcs {
             LOGGER.info("CSV Line: {}", csvLine);
             c.output(csvLine);
         }
-    }
+    }*/
 
 }
