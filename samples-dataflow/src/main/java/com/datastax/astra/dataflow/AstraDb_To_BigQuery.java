@@ -31,14 +31,8 @@ import org.slf4j.LoggerFactory;
  --project=integrations-379317 \
  --region=us-central1"
 
-
  */
 public class AstraDb_To_BigQuery {
-
-    /**
-     * Logger for the class.
-     */
-    private static final Logger LOGGER = LoggerFactory.getLogger(AstraDb_To_Gcs.class);
 
     /**
      * Flow Interface

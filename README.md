@@ -263,7 +263,15 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
     --role=roles/storage.objectAdmin
 ```
 
-- ✅ **`9/15` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
+
+- ✅ **`9/15` - Make sure you are in `samples-dataflow` folder**
+
+```bash
+cd samples-dataflow
+pwd
+```
+
+- ✅ **`10/15` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
 
 ```
 gsutil mb -c STANDARD -l US gs://astra_dataflow_inputs
@@ -271,7 +279,7 @@ gsutil cp src/test/resources/language-codes.csv gs://astra_dataflow_inputs/csv/
 gsutil ls
 ```
 
-- ✅ **`10/15` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
+- ✅ **`11/15` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
 
     ```
     gcloud secrets create astra-token \
@@ -293,18 +301,10 @@ gsutil ls
     gcloud secrets list
     ```
 
-- ✅ **`11/15` - Create new keyspace in the DB if needed**
+- ✅ **`12/15` - Create new keyspace in the DB if needed**
 
 ```bash
 astra db create-keyspace demo -k samples_dataflow --if-not-exist
-```
-
-
-- ✅ **`12/15` - Make sure you are in `samples-dataflow` folder**
-
-```bash
-cd samples-dataflow
-pwd
 ```
 
 - ✅ **`13/15` - Setup environment variables**
@@ -389,7 +389,10 @@ pwd
 
 ![Astra to BigQuery](img/astra-to-bigquery.png)
 
-- ✅ **`setup` - Prerequisites:** We assume that you have already executed pipeline described in `3.1` and that `gloud` is set up._
+> ```
+> ⚠ Prerequisites:
+> - To setup the gcp project please follows setups in `3.1`
+> ```
 
 - ✅ **`setup` - Make sure you are in `samples-dataflow` folder**
 
@@ -408,7 +411,7 @@ export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
 export GCP_PROJECT_ID=integrations-379317
 ```
 
-- ✅ **`2/X` - Create a dataset in `dataflow_input_tiny` BigQuery with the following command**
+- ✅ **`2/X` - Create a dataset in `dataflow_input_us` BigQuery with the following command**
 
 ```bash
 export GCP_BIGQUERY_DATASET=dataflow_input_us
@@ -485,9 +488,26 @@ bq head -n 10 ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
 > - To have the BigQuery table populated follows steps in `3.3`
 > ```
 
-- ✅ **`setup` - Make sure you are in `samples-dataflow` folder**
+#### `3.4.1` - ✅ Make sure you are in `samples-dataflow` folder
 
 ```bash
 cd samples-dataflow
 pwd
 ```
+
+#### `3.4.2` - ✅ Make sure you have those variables initialized
+
+_Replace with values coming from your gcp project. 
+The destination table has been created in flow `3.3`_
+
+```bash
+export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export GCP_PROJECT_ID=integrations-379317
+export GCP_BIGQUERY_DATASET=dataflow_input_us
+export GCP_BIGQUERY_TABLE=destination
+```
+
+
+

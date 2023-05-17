@@ -4,6 +4,7 @@ import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
 import com.google.api.services.bigquery.Bigquery;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbWriteOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -67,14 +68,16 @@ public class BigQuery_to_AstraDb {
                 .fromArgs(args).withValidation()
                 .as(BigQueryToAstraDbOptions.class);
 
-        // Read Input From Google Secrets
-        String astraToken = GoogleSecretManagerUtils.
-                readTokenSecret(options.getAstraToken());
-        byte[] astraSecureBundle = GoogleSecretManagerUtils.
-                readSecureBundleSecret(options.getAstraSecureConnectBundle());
+        try {
 
-        Pipeline bq2AstraPipeline = Pipeline.create(bq2AstraOptions);
-        LOGGER.info("+ Pipeline Created");
+            // Read Input From Google Secrets
+            String astraToken = GoogleSecretManagerUtils.
+                    readTokenSecret(options.getAstraToken());
+            byte[] astraSecureBundle = GoogleSecretManagerUtils.
+                    readSecureBundleSecret(options.getAstraSecureConnectBundle());
+
+            Pipeline bq2AstraPipeline = Pipeline.create(options);
+            LOGGER.info("+ Pipeline Created");
 
         bq2AstraPipeline
                         // 1. READ From BigQuery
@@ -103,7 +106,10 @@ public class BigQuery_to_AstraDb {
                            .withEntity(LanguageCodeEntity.class));
 
         bq2AstraPipeline.run().waitUntilFinish();
-    }*/
+        } finally {
+            AstraDbConnectionManager.cleanup();
+        }
+    }
 
 
 }
