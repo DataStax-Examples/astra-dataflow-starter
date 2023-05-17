@@ -116,7 +116,7 @@ astra db download-scb demo -f /tmp/secure-connect-bundle-db-demo.zip
 
 ### 2.1 - CSV to Astra
 
-![CSV to Astra](img/csv_to_astra.png)
+![CSV to Astra](img/csv-to-astra.png)
 
 - ✅ **Make sure you are in `samples-beam` folder**
 
@@ -155,7 +155,7 @@ astra db cqlsh demo \
 
 ### 2.2 - Astra to CSV
 
-![Astra to CSV](img/astra_to_csv.png)
+![Astra to CSV](img/astra-to-csv.png)
 
 - ✅ **Make sure you are in `samples-beam` folder**
 
@@ -196,7 +196,7 @@ cat `pwd`/src/test/resources/out/language-00001-of-00004
 
 ### 3.1 - GCS To Astra
 
-![CSV to Astra](img/gcs_to_astra.png)
+![CSV to Astra](img/gcs-to-astra.png)
 
 - ✅ **`1/15` - Create GCP Project**
 
@@ -341,6 +341,8 @@ astra db cqlsh demo \
 
 ### 3.2 - Astra To GCS
 
+![Astra to GCS](img/astra-to-gcs.png)
+
 We assume that you have already executed pipeline described in `3.1` and that gloud is set up.
 
 - ✅ **Make sure you have those variables initialized**
@@ -385,7 +387,7 @@ pwd
 
 ### 3.3 - AstraDb To BigQuery
 
-![CSV to Astra](img/astra_to_gcs.png)
+![Astra to BigQuery](img/astra-to-bigquery.png)
 
 - ✅ **`setup` - Prerequisites:** We assume that you have already executed pipeline described in `3.1` and that `gloud` is set up._
 
@@ -475,4 +477,17 @@ bq head -n 10 ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
 
 ### 3.4 - BigQuery to AstraDb
 
+![BigQuery to Astra](img/bigquery-to-astra.png)
+ 
+> ```
+> ⚠ Prerequisites:
+> - To setup the gcp project please follows setups in `3.1` 
+> - To have the BigQuery table populated follows steps in `3.3`
+> ```
 
+- ✅ **`setup` - Make sure you are in `samples-dataflow` folder**
+
+```bash
+cd samples-dataflow
+pwd
+```
