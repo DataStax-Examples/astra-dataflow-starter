@@ -1,4 +1,14 @@
-## Astra Data Flow Starter
+## Getting Started with Apache Beam / Dataflow starter and DataStax AstraDb.
+
+![GitHub](https://img.shields.io/github/license/DataStax-Examples/astra-dataflow-starter?style=plastic)
+
+Connector last Release:
+![Latest Release](https://img.shields.io/github/v/release/clun/beam-sdks-java-io-astra)
+
+
+This Repository contains sample pipelines and documentation to 
+import and/or export data from DataStax Astra DB leveraging 
+Apache Beam and Dataflow.
 
 Sample Apache Beam pipelines to read and write data from Astra DB 
 and Astra Streaming.

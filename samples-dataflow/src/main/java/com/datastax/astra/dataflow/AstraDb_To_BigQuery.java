@@ -23,10 +23,10 @@ import org.apache.beam.sdk.options.Validation;
  -Dexec.args="\
  --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
  --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
- --keyspace=samples_dataflow \
+ --keyspace=samples_beams \
  --table=languages \
  --bigQueryDataset=dataflow_input_us \
- --bigQueryTable=destination \
+ --bigQueryTable=languages \
  --runner=DataflowRunner \
  --project=integrations-379317 \
  --region=us-central1"

@@ -21,7 +21,7 @@
     <!-- Beam -->
     <beam.version>2.46.0</beam.version>
     <!-- AstraDbIO -->
-    <astra.beam-sdk.version>1.0-SNAPSHOT</astra.beam-sdk.version>
+    <astra.beam-sdk.version>0.2.1</astra.beam-sdk.version>
     <!-- Third Parties -->
     <!-- Maven -->
     <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
