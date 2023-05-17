@@ -119,14 +119,14 @@ astra db download-scb demo -f /tmp/secure-connect-bundle-db-demo.zip
 
 ![CSV to Astra](img/csv-to-astra.png)
 
-- ✅ **Make sure you are in `samples-beam` folder**
+#### `2.1.1` - ✅ Make sure you are in `samples-beam`
 
 ```bash
 cd samples-beam
 pwd
 ```
 
-- ✅ **Setup environment variables**
+#### `2.1.2` - ✅ Setup environment variables
 
 ```bash
 export ASTRA_TOKEN=$(astra token)
@@ -134,7 +134,7 @@ export ASTRA_SCB_PATH=/tmp/secure-connect-bundle-db-demo.zip
 export ASTRA_KEYSPACE=samples_beam
 ```
 
-- ✅ **Run the demo**
+#### `2.1.3` - ✅ Run the demo
 
 ```bash
  mvn clean compile exec:java \
@@ -146,7 +146,7 @@ export ASTRA_KEYSPACE=samples_beam
  --csvInput=`pwd`/src/test/resources/language-codes.csv"
 ```
 
-- ✅ **Check that data is in the table**
+#### `2.1.4` - ✅ Check that data is in the table
 
 ```bash
 astra db cqlsh demo \
@@ -158,14 +158,14 @@ astra db cqlsh demo \
 
 ![Astra to CSV](img/astra-to-csv.png)
 
-- ✅ **Make sure you are in `samples-beam` folder**
+#### `2.2.1` - ✅ Make sure you are in `samples-beam` folder
 
 ```bash
 cd samples-beam
 pwd
 ```
 
-- ✅ **Setup environment variables**
+#### `2.2.2` - ✅ Setup environment variables
 
 ```bash
 export ASTRA_TOKEN=$(astra token)
@@ -173,7 +173,7 @@ export ASTRA_SCB_PATH=/tmp/secure-connect-bundle-db-demo.zip
 export ASTRA_KEYSPACE=samples_beam
 ```
 
-- ✅ **Run the demo**
+#### `2.2.3` - ✅ Run the demo
 
 ```bash
  mvn clean compile exec:java \
@@ -186,7 +186,7 @@ export ASTRA_KEYSPACE=samples_beam
  --csvOutput=`pwd`/src/test/resources/out/language"
 ```
 
-- ✅ **Check that data is the folder**
+#### `2.2.4` - ✅ Check that data is the folder
 
 ```bash
 ls -l `pwd`/src/test/resources/out
@@ -269,25 +269,25 @@ astra db cqlsh demo \
    -e "SELECT * FROM languages LIMIT 10;"
 ```
 
-
-
 ## 3 - Samples Dataflow
 
 ### 3.1 - GCS To Astra
 
 ![CSV to Astra](img/gcs-to-astra.png)
 
-- ✅ **`1/15` - Create GCP Project**
+#### `3.1.1` - ✅ Create GCP Project
 
 > Note: If you don't plan to keep the resources that you create in this guide, create a project instead of selecting an existing project. After you finish these steps, you can delete the project, removing all resources associated with the project. Create a new Project in Google Cloud Console or select an existing one.
 
 In the Google Cloud console, on the project selector page, select or [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
 
-- ✅ **`2/15` - Enable Billing**: 
+#### `3.1.2` - ✅ Enable Billing 
 
 Make sure that billing is enabled for your Cloud project. Learn how to [check if billing is enabled on a project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled)
 
-- ✅ **`3/15` - Save project ID**: The project identifier is available in the column `ID`. We will need it so let's save it as an environment variable
+#### `3.1.3` - ✅ Save project ID: 
+
+_The project identifier is available in the column `ID`. We will need it so let's save it as an environment variable_
 
 ```bash
 export GCP_PROJECT_ID=integrations-379317
@@ -296,27 +296,27 @@ export GCP_USER=cedrick.lunven@datastax.com
 export GCP_COMPUTE_ENGINE=747469159044-compute@developer.gserviceaccount.com
 ```
 
-- ✅ **`4/15` - Download and install gCoud CLI**
+#### `3.1.4` - ✅ Download and install gCoud CLI
 
 ```
 curl https://sdk.cloud.google.com | bash
 ```
 
-- ✅ **`5/15` - Authenticate with Google Cloud**
+#### `3.1.5` - ✅ Authenticate with Google Cloud
 
 Run the following command to authenticate with Google Cloud:
 ```
 gcloud auth login
 ```
 
-- ✅ **`6/15` - Set your project: If you haven't set your project yet, use the following command to set your project ID:**
+#### `3.1.6` - ✅ Set your project: If you haven't set your project yet, use the following command to set your project ID:
 
 ```
 gcloud config set project ${GCP_PROJECT_ID}
 gcloud projects describe ${GCP_PROJECT_ID}
 ```
 
-- ✅ **`7/15` - Enable needed API**
+#### `3.1.7` - ✅ Enable needed API
 
 ```
 gcloud services enable dataflow compute_component \
@@ -325,7 +325,7 @@ gcloud services enable dataflow compute_component \
    cloudresourcemanager.googleapis.com
 ```
 
-- ✅ **`8/15` - Add Roles to `dataflow` users:** To complete the steps, your user account must have the Dataflow Admin role and the Service Account User role. The Compute Engine default service account must have the Dataflow Worker role. To add the required roles in the Google Cloud console:
+#### `3.1.8` - ✅ Add Roles to `dataflow` users:** To complete the steps, your user account must have the Dataflow Admin role and the Service Account User role. The Compute Engine default service account must have the Dataflow Worker role. To add the required roles in the Google Cloud console:
 
 ```
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
@@ -343,14 +343,14 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID}  \
 ```
 
 
-- ✅ **`9/15` - Make sure you are in `samples-dataflow` folder**
+#### `3.1.9` - ✅ Make sure you are in `samples-dataflow` folder
 
 ```bash
 cd samples-dataflow
 pwd
 ```
 
-- ✅ **`10/15` - Create `buckets` for the project in cloud storage:** an copy file in this bucket 
+#### `3.1.10` - ✅ Create `buckets` for the project in cloud storage:** an copy file in this bucket 
 
 ```
 gsutil mb -c STANDARD -l US gs://astra_dataflow_inputs
@@ -358,7 +358,7 @@ gsutil cp src/test/resources/language-codes.csv gs://astra_dataflow_inputs/csv/
 gsutil ls
 ```
 
-- ✅ **`11/15` - [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
+#### `3.1.11` - ✅ [Create secrets for the project in secret manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#secretmanager-create-secret-gcloud)**. To connect to `AstraDB` you need a token (credentials) and a zip used to secure the transport. Those two inputs should be defined as _secrets_.
 
     ```
     gcloud secrets create astra-token \
@@ -380,13 +380,13 @@ gsutil ls
     gcloud secrets list
     ```
 
-- ✅ **`12/15` - Create new keyspace in the DB if needed**
+#### `3.1.12` - ✅ Create new keyspace in the DB if needed
 
 ```bash
 astra db create-keyspace demo -k samples_dataflow --if-not-exist
 ```
 
-- ✅ **`13/15` - Setup environment variables**
+#### `3.1.13` - ✅ Setup environment variables
 
 ```bash
 export ASTRA_KEYSPACE=samples_dataflow
@@ -395,7 +395,7 @@ export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-b
 export GCP_INPUT_CSV=gs://astra_dataflow_inputs/csv/language-codes.csv
 ```
 
-- ✅ **`14/15` - Run the demo**
+#### `3.1.14` - ✅ Run the demo
 
 ```bash
  mvn compile exec:java \
@@ -410,7 +410,7 @@ export GCP_INPUT_CSV=gs://astra_dataflow_inputs/csv/language-codes.csv
  --region=us-central1"
 ```
 
-- ✅ **`15/15` - Check that data is in the table**
+#### `3.1.15` - ✅ Check that data is in the table**
 
 ```bash
 astra db cqlsh demo \
@@ -424,7 +424,7 @@ astra db cqlsh demo \
 
 We assume that you have already executed pipeline described in `3.1` and that gloud is set up.
 
-- ✅ **Make sure you have those variables initialized**
+#### `3.2.1` - ✅ Make sure you have those variables initialized
 
 ```bash
 export ASTRA_KEYSPACE=samples_dataflow
@@ -433,22 +433,21 @@ export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-b
 export GCP_PROJECT_ID=integrations-379317
 ```
 
-- ✅ **Create a bucket to save the exported values**
+#### `3.2.2` - ✅ Create a bucket to save the exported values
 
 ```bash
 gsutil mb -c STANDARD -l US gs://astra_dataflow_outputs
 export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs
-
 ```
 
-- ✅ **Make sure you are in `samples-dataflow` folder**
+#### `3.2.3` - ✅ Make sure you are in `samples-dataflow` folder
 
 ```bash
 cd samples-dataflow
 pwd
 ```
 
-- ✅ **Run the pipeline**
+#### `3.2.4` - ✅ Run the pipeline
 
 ```bash
  mvn compile exec:java \
@@ -473,14 +472,14 @@ pwd
 > - To setup the gcp project please follows setups in `3.1`
 > ```
 
-- ✅ **`setup` - Make sure you are in `samples-dataflow` folder**
+#### `3.3.1` - ✅ Make sure you are in `samples-dataflow` folder
 
 ```bash
 cd samples-dataflow
 pwd
 ```
 
-- ✅ **`1/X` - Make sure you have those variables initialized**
+#### `3.3.2` - ✅ Make sure you have those variables initialized
 
 ```bash
 export ASTRA_KEYSPACE=samples_dataflow
@@ -490,7 +489,7 @@ export GCP_OUTPUT_CSV=gs://astra_dataflow_outputs/csv/language-codes.csv
 export GCP_PROJECT_ID=integrations-379317
 ```
 
-- ✅ **`2/X` - Create a dataset in `dataflow_input_us` BigQuery with the following command**
+#### `3.3.3` - ✅ Create a dataset in `dataflow_input_us` BigQuery with the following command
 
 ```bash
 export GCP_BIGQUERY_DATASET=dataflow_input_us
@@ -498,7 +497,7 @@ bq mk ${GCP_BIGQUERY_DATASET}
 bq ls --format=pretty
 ```
 
-- ✅ **`3/X` - Create a json `schema_language_codes.json` file with the schema of the table** We have created it for you [here](samples-dataflow/src/main/resources/schema_language_codes.json)
+#### `3.3.4` - ✅ Create a json `schema_language_codes.json` file with the schema of the table** We have created it for you [here](samples-dataflow/src/main/resources/schema_language_codes.json)
  
 ```json
 [
@@ -515,26 +514,26 @@ bq ls --format=pretty
 ]
 ```
 
-- ✅ **`4/X` - Create a table with specified schema**
+#### `3.3.5` - ✅ Create a table with specified schema
 
 ```bash
 export GCP_BIGQUERY_TABLE=destination
 bq mk --table --schema src/main/resources/schema_language_codes.json ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
 ```
 
-- ✅ **`5/X` - List tables in your dataset**
+#### `3.3.6` - ✅ List tables in your dataset
 
 ```bash
 bq ls --format=pretty ${GCP_PROJECT_ID}:${GCP_BIGQUERY_DATASET}
 ```
 
-- Get Table schema
+#### `3.3.7` - ✅ Get Table schema
 
 ```bash
 bq show --schema --format=prettyjson ${GCP_PROJECT_ID}:${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
 ```
 
-- ✅ **Run the pipeline**
+#### `3.3.8` - ✅ Run the pipeline
 
 ```bash
 mvn compile exec:java \
@@ -551,7 +550,7 @@ mvn compile exec:java \
  --region=us-central1"
 ```
 
-- ✅ **Show the Content of the Table**
+#### `3.3.9` - ✅ Show the Content of the Table
 
 ```bash
 bq head -n 10 ${GCP_BIGQUERY_DATASET}.${GCP_BIGQUERY_TABLE}
