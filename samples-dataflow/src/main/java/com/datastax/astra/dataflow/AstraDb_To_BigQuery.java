@@ -11,9 +11,9 @@ import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbReadOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.options.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
 
 /**
  * Copy a Cassandra Table in BiQuery.
@@ -43,11 +43,15 @@ public class AstraDb_To_BigQuery {
         @Description("BigQuery dataset name")
         @Validation.Required
         String getBigQueryDataset();
+
+        @SuppressWarnings("unused")
         void setBigQueryDataset(String dataset);
 
         @Description("BigQuery table name")
         @Validation.Required
         String getBigQueryTable();
+
+        @SuppressWarnings("unused")
         void setBigQueryTable(String table);
     }
 

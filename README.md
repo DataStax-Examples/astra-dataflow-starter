@@ -14,6 +14,7 @@ Those flows leverage the `AstraDbIO` component available at [this repo](https://
 [**2 - Samples Apache Beam**](#2-sample-apache-beam)
 - [2.1 - CSV to Astra](#21---csv-to-astra)
 - [2.2 - Astra to CSV](#22---astra-to-csv)
+- [2.3 - Cassandra to Astra](#23---cassandra-to-astra)
 
 [**3 - Samples Dataflow**](#3---samples-dataflow)
 - [3.1 - Gcs to Astra](#31---gcs-to-astra)
@@ -191,6 +192,84 @@ export ASTRA_KEYSPACE=samples_beam
 ls -l `pwd`/src/test/resources/out
 cat `pwd`/src/test/resources/out/language-00001-of-00004
 ```
+
+### 2.3 - Cassandra to Astra
+
+![Cassandra to Astra](img/cassandra-to-astra.png)
+
+#### `2.3.1` - ✅ Make sure you are in `samples-beam` folder
+
+```bash
+cd samples-beam
+pwd
+```
+
+#### `2.3.2` - ✅ Start a Cassandra Cluster Locally
+
+```bash
+docker-compose -f ./src/main/docker/docker-compose.yml up -d
+```
+
+Wait a few seconds for Cassandra to Start.
+
+```bash
+docker-compose -f ./src/main/docker/docker-compose.yml ps | cut -b 55-61
+```
+
+#### `2.3.3` - ✅ Validate Cassandra is ready
+
+```bash
+docker exec -it `docker ps | grep cassandra:4.1.1 | cut -b 1-12` cqlsh -e "SELECT data_center FROM system.local;"
+```
+
+#### `2.3.4` - ✅ Setup environment variables
+
+```bash
+export ASTRA_TOKEN=$(astra token)
+export ASTRA_SCB_PATH=/tmp/secure-connect-bundle-db-demo.zip
+export ASTRA_KEYSPACE=samples_beam
+```
+
+#### `2.3.5` - ✅ Empty target table if needed
+
+```bash
+astra db cqlsh demo \
+   -k samples_beam \
+   -e "TRUNCATE languages;"
+```
+
+#### `2.3.6` - ✅ Run the demo
+
+```bash
+ mvn clean compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.beam.Cassandra_To_AstraDb \
+ -Dexec.args="\
+ --astraToken=${ASTRA_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SCB_PATH} \
+ --keyspace=${ASTRA_KEYSPACE} \
+ --cassandraHost=localhost \
+ --cassandraPort=9042 \
+ --tableName=languages"
+```
+
+#### `2.3.7` - ✅ Validate Cassandra Table is populated
+
+```bash
+docker exec -it `docker ps \
+  | grep cassandra:4.1.1 \
+  | cut -b 1-12` \
+  cqlsh -e "SELECT *  FROM samples_beam.languages LIMIT 10;"
+```
+
+#### `2.3.7` - ✅ Validate Astra Table is populated
+
+```bash
+astra db cqlsh demo \
+   -k samples_beam \
+   -e "SELECT * FROM languages LIMIT 10;"
+```
+
+
 
 ## 3 - Samples Dataflow
 
@@ -507,6 +586,40 @@ export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-b
 export GCP_PROJECT_ID=integrations-379317
 export GCP_BIGQUERY_DATASET=dataflow_input_us
 export GCP_BIGQUERY_TABLE=destination
+```
+
+#### `3.4.3` - ✅ Empty the destination table in Astra
+
+```bash
+astra db cqlsh demo \
+  -k ${ASTRA_KEYSPACE} \
+  -e "TRUNCATE languages;"
+```
+
+#### `3.4.4` - ✅ Run the Pipeline
+
+```bash
+mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.BigQuery_To_AstraDb \
+ -Dexec.args="\
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
+ --keyspace=samples_dataflow \
+ --bigQueryDataset=${GCP_BIGQUERY_DATASET} \
+ --bigQueryTable=${GCP_BIGQUERY_TABLE} \
+ --runner=DataflowRunner \
+ --project=${GCP_PROJECT_ID} \
+ --region=us-central1"
+```
+
+
+
+#### `3.4.5` - ✅ Validate Destination Table has been populated
+
+```bash
+astra db cqlsh demo \
+  -k ${ASTRA_KEYSPACE} \
+  -e "select * FROM languages LIMIT 10;"
 ```
 
 

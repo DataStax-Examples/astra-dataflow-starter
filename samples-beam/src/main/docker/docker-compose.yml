@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  cassandra:
+    image: cassandra:4.1.1
+    ports:
+      - 9042:9042
+    environment:
+      JAVA_OPTS: "-Xmx2G"
+      CASSANDRA_CLUSTER_NAME: source
+      CASSANDRA_DC: dc1
+    restart: unless-stopped
+    # If you want to data
+    # volumes:
+    #   - ~/cassandra/:/var/lib/cassandra/data
+
+# If you want to have cqlsh
+#  docker exec -it `docker ps | grep cassandra:4.1.1 | cut -b 1-12` cqlsh
