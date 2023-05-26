@@ -2,21 +2,22 @@
 	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-       		<pattern>%d{HH:mm:ss.SSS} %magenta(%-5level) %cyan(%-47logger) : %msg%n</pattern>
+       		<pattern>%msg%n</pattern>
+            <!--<pattern>%d{HH:mm:ss.SSS} %magenta(%-5level) %cyan(%-47logger) : %msg%n</pattern>-->
         </encoder>
     </appender>
 
-    <!-- Log for the Connector AstraIO -->
+    <!-- Log for the Connector AstraDbIO -->
     <logger name="org.apache.beam.sdk.io.astra" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
-
     <!-- Log for pipelines -->
-    <logger name="com.dtx.astra.beam" level="INFO" additivity="false">
+    <logger name="com.datastax.astra.dataflow" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
 
-    <root level="INFO">
+
+    <root level="WARN">
         <appender-ref ref="STDOUT" />
     </root>
 

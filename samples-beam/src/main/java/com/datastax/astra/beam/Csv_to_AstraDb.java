@@ -104,10 +104,10 @@ public class Csv_to_AstraDb {
    * Csv => Bean
    */
   private static class MapCsvLineAsRecord extends DoFn<String, LanguageCode> {
+
     @ProcessElement
     public void processElement(@Element String row, OutputReceiver<LanguageCode> receiver) {
-      String[] fields = row.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
-      receiver.output(new LanguageCode(fields[0], fields[1]));
+      receiver.output(LanguageCode.fromCsv(row));
     }
   }
 

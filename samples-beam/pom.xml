@@ -20,6 +20,7 @@
       <artifactId>beam-sdks-java-io-astra</artifactId>
     </dependency>
 
+    <!-- Used to extract data from Cassandra -->
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-cassandra</artifactId>

@@ -31,6 +31,7 @@ Those flows leverage the `AstraDbIO` component available at [this repo](https://
 - [3.2 - Astra to Gcs](#32---astra-to-gcs)
 - [3.3 - AstraDb to BigQuery](#33---astradb-to-bigquery)
 - [3.4 - BigQuery to AstraDb](#34---bigquery-to-astradb)
+- [3.5 - AstraDb to BigQuery Dynamic](#35---astradb-to-bigquery-dynamic)
 
 
 ----
@@ -631,5 +632,56 @@ astra db cqlsh demo \
   -e "select * FROM languages LIMIT 10;"
 ```
 
+### 3.5 - AstraDb To BigQuery Dynamic
+
+![Astra to BigQuery](img/astra-to-bigquery.png)
+
+> ```
+> ⚠ Prerequisites:
+> - To setup the gcp project please follows setups in `3.1`
+> ```
+
+#### `3.5.1` - ✅ Make sure you are in `samples-dataflow` folder
+
+```bash
+cd samples-dataflow
+pwd
+```
+
+#### `3.5.2` - ✅ Make sure you have those variables initialized
+
+We assume the table `languages` exists and has been populated in `3.1`
+
+```bash
+export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1
+export ASTRA_KEYSPACE=samples_dataflow
+export ASTRA_TABLE=languages
+export GCP_PROJECT_ID=integrations-379317
+```
+
+#### `3.5.3` - ✅ Run the pipeline
+
+```bash
+mvn compile exec:java \
+ -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_BigQuery_Dynamic \
+ -Dexec.args="\
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
+ --keyspace=${ASTRA_KEYSPACE} \
+ --table=${ASTRA_TABLE} \
+ --runner=DataflowRunner \
+ --project=${GCP_PROJECT_ID} \
+ --region=us-central1"
+```
+
+#### `3.5.4` - ✅ Show the Content of the Table
+
+A dataset with the keyspace name and a table 
+with the table name have been created in BigQuery.
+
+```bash
+bq head -n 10 ${ASTRA_KEYSPACE}.${ASTRA_TABLE}
+```
 
 

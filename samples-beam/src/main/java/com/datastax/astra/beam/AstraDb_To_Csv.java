@@ -55,11 +55,9 @@ public class AstraDb_To_Csv {
                 .as(AstraDbToCsvOptions.class);
 
         // Build Read
-        Pipeline exportCsvPipeline = Pipeline.create(options);
         try {
-            exportCsvPipeline
-
-                    .apply("Read Table", AstraDbIO.<LanguageCode>read()
+            Pipeline astra2Csv = Pipeline.create(options);
+            astra2Csv.apply("Read Table", AstraDbIO.<LanguageCode>read()
                             .withToken(options.getAstraToken())
                             .withSecureConnectBundle(new File(options.getAstraSecureConnectBundle()))
                             .withKeyspace(options.getKeyspace())
@@ -71,7 +69,7 @@ public class AstraDb_To_Csv {
 
                     .apply("Write CSV file", TextIO.write().to(options.getCsvOutput()));
 
-            exportCsvPipeline.run();
+            astra2Csv.run();
         } finally {
             AstraDbConnectionManager.cleanup();
         }

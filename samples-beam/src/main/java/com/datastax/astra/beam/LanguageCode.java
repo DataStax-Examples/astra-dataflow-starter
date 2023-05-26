@@ -62,6 +62,16 @@ public class LanguageCode implements Serializable {
     }
 
     /**
+     * Map Csv Row to LanguageCode.
+     * @param csvRow
+     * @return
+     */
+    public static LanguageCode fromCsv(String csvRow) {
+        String[] chunks = csvRow.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+        return new LanguageCode(chunks[0], chunks[1]);
+    }
+
+    /**
      * Help generating the Target Table if it does not exist.
      *
      * @return

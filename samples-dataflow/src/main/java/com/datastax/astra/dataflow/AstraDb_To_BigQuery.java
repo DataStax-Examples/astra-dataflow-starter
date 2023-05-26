@@ -82,7 +82,7 @@ public class AstraDb_To_BigQuery {
 
             // Read BigQuery Schema
             TableSchema tableSchema = GoogleBigQueryUtils
-                    .getTableSchema("schema_language_codes.json");
+                    .readTableSchemaFromJsonFile("schema_language_codes.json");
 
             // Build sink
             BigQueryIO.Write<LanguageCode> bigQuerySink =  BigQueryIO.<LanguageCode>write()

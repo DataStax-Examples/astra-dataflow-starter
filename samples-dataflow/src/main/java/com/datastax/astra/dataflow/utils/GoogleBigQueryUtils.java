@@ -3,17 +3,14 @@ package com.datastax.astra.dataflow.utils;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
-import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.lang.reflect.Type;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Utility class to work with Google BigQuery.
@@ -33,7 +30,7 @@ public class GoogleBigQueryUtils {
      * @return
      *      table Schema
      */
-    public static TableSchema getTableSchema(String jsonFileName) {
+    public static TableSchema readTableSchemaFromJsonFile(String jsonFileName) {
         Type listType = new TypeToken<ArrayList<TableFieldSchema>>(){}.getType();
         List<TableFieldSchema> yourClassList = new Gson().fromJson(readJsonFile(jsonFileName), listType);
         TableSchema tableSchema = new TableSchema();
@@ -58,9 +55,5 @@ public class GoogleBigQueryUtils {
         } else {
             throw new IllegalArgumentException("Cannot read Json Schema File");
         }
-    }
-
-    public static void main(String[] args) {
-        System.out.println(getTableSchema("schema_language_codes.json"));
     }
 }

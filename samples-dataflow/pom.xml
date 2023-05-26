@@ -22,6 +22,7 @@
 
     <!-- does not update: match grpc 1.52.1 from Bom -->
     <google.cloud-secretmanager.version>2.10.0</google.cloud-secretmanager.version>
+    <google.cloud-bigquery.version>2.26.1</google.cloud-bigquery.version>
   </properties>
   
   <dependencies>
@@ -29,6 +30,7 @@
     <dependency>
       <groupId>com.datastax.astra</groupId>
       <artifactId>beam-sdks-java-io-astra</artifactId>
+      <version>0.2.4-SNAPSHOT</version>
     </dependency>
 
     <dependency>
@@ -48,6 +50,12 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
       <version>${google.cloud-secretmanager.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
+      <version>${google.cloud-bigquery.version}</version>
     </dependency>
 
     <dependency>
