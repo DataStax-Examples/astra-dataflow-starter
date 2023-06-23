@@ -1,30 +1,28 @@
-package com.datastax.astra.dataflow;
+package com.datastax.astra.beam.lang;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.schemabuilder.SchemaBuilder;
-import com.datastax.driver.mapping.annotations.Column;
-import com.datastax.driver.mapping.annotations.PartitionKey;
-import com.datastax.driver.mapping.annotations.Table;
-import com.google.api.services.bigquery.model.TableRow;
+import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.mapper.annotations.CqlName;
+import com.datastax.oss.driver.api.mapper.annotations.Entity;
+import com.datastax.oss.driver.api.mapper.annotations.PartitionKey;
+import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 
 import java.io.Serializable;
 
 /**
  * DTO for Language Code.
  */
-@Table(name = LanguageCode.TABLE_NAME)
+@Entity
+@CqlName(LanguageCode.TABLE_NAME)
 public class LanguageCode implements Serializable {
 
     /** Constants for mapping. */
     public static final String TABLE_NAME      = "languages";
-    public static final String COLUMN_CODE     = "code";
-    public static final String COLUMN_LANGUAGE = "language";
 
     @PartitionKey
-    @Column(name = COLUMN_CODE)
+    @CqlName("code")
     private String code;
 
-    @Column(name = COLUMN_LANGUAGE)
+    @CqlName("language")
     private String language;
 
     /**
@@ -34,7 +32,7 @@ public class LanguageCode implements Serializable {
     }
 
     /**
-     * Full-fledged constructor
+     * Full Fledge constructor
      */
     public LanguageCode(String code, String language) {
         this.code = code;
@@ -42,7 +40,7 @@ public class LanguageCode implements Serializable {
     }
 
     /**
-     * Helping generate the Target Table if it does not exist.
+     * Help generating the Target Table if it does not exist.
      *
      * @return
      *      create statement
@@ -63,40 +61,27 @@ public class LanguageCode implements Serializable {
     }
 
     /**
-     * Read From BigQuery table.
-     *
-     * @param row
-     *      current big query row
+     * Map Csv Row to LanguageCode.
+     * @param csvRow
      * @return
-     *      current bean.
      */
-    public static LanguageCode fromBigQueryTableRow(TableRow row) {
-        return new LanguageCode((String) row.get("code"), (String) row.get("language"));
+    public static LanguageCode fromCsv(String csvRow) {
+        String[] chunks = csvRow.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+        return new LanguageCode(chunks[0], chunks[1]);
     }
 
     /**
-     * Convert to BigQuery TableRow.
-     * @return
-     *      big query table row
-     */
-    public TableRow toBigQueryTableRow() {
-        TableRow row = new TableRow();
-        row.set("code", this.code);
-        row.set("language", this.language);
-        return row;
-    }
-
-    /**
-     * Helping generate the Target Table if it does not exist.
+     * Help generating the Target Table if it does not exist.
      *
      * @return
      *      create statement
      */
     public static String cqlCreateTable() {
         return SchemaBuilder.createTable(TABLE_NAME)
-                .addPartitionKey(COLUMN_CODE, DataType.text())
-                .addColumn(COLUMN_LANGUAGE, DataType.text())
-                .ifNotExists().toString();
+                .ifNotExists()
+                .withPartitionKey("code", DataTypes.TEXT)
+                .withColumn("language", DataTypes.TEXT)
+                .toString();
     }
 
     /**

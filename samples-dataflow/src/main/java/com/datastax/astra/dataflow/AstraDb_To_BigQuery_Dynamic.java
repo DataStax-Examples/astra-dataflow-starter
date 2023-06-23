@@ -2,7 +2,7 @@ package com.datastax.astra.dataflow;
 
 import com.datastax.astra.dataflow.transforms.CassandraToBigQuerySchemaMapperFn;
 import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.BigQuery;
@@ -12,10 +12,10 @@ import com.google.cloud.bigquery.DatasetInfo;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
-import org.apache.beam.sdk.io.astra.db.mapping.BeamRowObjectMapperFactory;
-import org.apache.beam.sdk.io.astra.db.mapping.Mapper;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
+import org.apache.beam.sdk.io.astra.db.mapping.AstraDbMapper;
+import org.apache.beam.sdk.io.astra.db.mapping.BeamRowDbMapperFactoryFn;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbReadOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
@@ -33,15 +33,24 @@ import java.io.Serializable;
 /**
  * Copy a Cassandra Table in BiQuery.
 
+ export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+ export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/2
+ export ASTRA_KEYSPACE=samples_dataflow
+ export ASTRA_TABLE=languages
+
+ export GCP_PROJECT_ID=integrations-379317
+ export GCP_BIGQUERY_DATASET=dataflow_input_us
+ export GCP_BIGQUERY_TABLE=destination
+
  mvn compile exec:java \
  -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_BigQuery_Dynamic \
  -Dexec.args="\
- --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
- --keyspace=samples_dataflow \
- --table=languages \
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
+ --astraKeyspace=samples_dataflow \
+ --table=${ASTRA_TABLE} \
  --runner=DataflowRunner \
- --project=integrations-379317 \
+ --project=${GCP_PROJECT_ID} \
  --region=us-central1"
 
  */
@@ -90,7 +99,7 @@ public class AstraDb_To_BigQuery_Dynamic {
             LOGGER.info("Pipeline Validated");
             String bigQueryDataset = options.getBigQueryDataset();
             if (bigQueryDataset == null || "".equals(bigQueryDataset)) {
-                bigQueryDataset = options.getKeyspace();
+                bigQueryDataset = options.getAstraKeyspace();
             }
             LOGGER.info("Big Query dataset set to {}", bigQueryDataset);
             String bigQueryTable = options.getBigQueryTable();
@@ -132,18 +141,19 @@ public class AstraDb_To_BigQuery_Dynamic {
              * - List, Set are converted to ARRAY
              * - Columns part of the primary are not REQUIRED.
              */
-            SerializableFunction<Session, Mapper> beamRowMapperFactory =
-                    new BeamRowObjectMapperFactory(options.getKeyspace(), options.getTable());
+            SerializableFunction<CqlSession, AstraDbMapper<Row>> beamRowMapperFactory =
+                    new BeamRowDbMapperFactoryFn(options.getAstraKeyspace(), options.getTable());
+
             // Mapper Cassandra Table => BigQuery Schema
             SerializableFunction<AstraDbIO.Read<?>, TableSchema> bigQuerySchemaFactory =
-                    new CassandraToBigQuerySchemaMapperFn(options.getKeyspace(), options.getTable());
+                    new CassandraToBigQuerySchemaMapperFn(options.getAstraKeyspace(), options.getTable());
             LOGGER.info("Serializer initializations [OK]");
 
             // Source: AstraDb
             AstraDbIO.Read<Row> astraSource = AstraDbIO.<Row>read()
                     .withToken(astraToken)
-                    .withSecureConnectBundleData(astraSecureBundle)
-                    .withKeyspace(options.getKeyspace())
+                    .withSecureConnectBundle(astraSecureBundle)
+                    .withKeyspace(options.getAstraKeyspace())
                     .withTable(options.getTable())
                     .withMinNumberOfSplits(5)
                     .withMapperFactoryFn(beamRowMapperFactory)
@@ -175,7 +185,7 @@ public class AstraDb_To_BigQuery_Dynamic {
             astraDbToBigQueryPipeline.run().waitUntilFinish();
 
         } finally {
-            AstraDbConnectionManager.cleanup();
+            CqlSessionHolder.cleanup();
         }
     }
 

@@ -19,9 +19,11 @@
     <maven.plugin.compiler.source>11</maven.plugin.compiler.source>
     <maven.plugin.compiler.target>11</maven.plugin.compiler.target>
     <!-- Beam -->
-    <beam.version>2.47.0</beam.version>
+    <beam.version>2.48.0</beam.version>
     <!-- AstraDbIO -->
-    <astra.beam-sdk.version>0.2.4</astra.beam-sdk.version>
+    <astra.beam-sdk.version>4.16.3-SNAPSHOT</astra.beam-sdk.version>
+    <slf4j.version>2.0.7</slf4j.version>
+    <logback.version>1.4.8</logback.version>
     <!-- Third Parties -->
     <!-- Maven -->
     <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
@@ -48,7 +50,15 @@
 
     <dependencies>
 
-      <!-- BEAM -->
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
+        <version>2.48.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- BEAM
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-core</artifactId>
@@ -59,8 +69,9 @@
         <artifactId>beam-runners-direct-java</artifactId>
         <version>${beam.version}</version>
       </dependency>
+    -->
 
-      <!-- DATAFLOW -->
+      <!-- DATAFLOW
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
@@ -71,6 +82,7 @@
         <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
         <version>${beam.version}</version>
       </dependency>
+      -->
 
       <!-- BEAM ASTRA -->
       <dependency>
@@ -83,6 +95,25 @@
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-io-cassandra</artifactId>
         <version>${beam.version}</version>
+      </dependency>
+
+      <!-- Logger -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>${logback.version}</version>
+        <scope>runtime</scope>
       </dependency>
 
     </dependencies>

@@ -13,25 +13,97 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
+  <properties>
+    <cassandra-driver4x.version>4.16.0</cassandra-driver4x.version>
+    <lombok.version>1.18.28</lombok.version>
+    <netty.version>4.1.94.Final</netty.version>
+    <openai-java.version>0.12.0</openai-java.version>
+  </properties>
+
   <dependencies>
 
-    <dependency>
-      <groupId>com.datastax.astra</groupId>
-      <artifactId>beam-sdks-java-io-astra</artifactId>
-    </dependency>
-
-    <!-- Used to extract data from Cassandra -->
+    <!-- Read From Cassandra -->
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-cassandra</artifactId>
     </dependency>
 
+    <!-- Write into Astra -->
+    <dependency>
+      <groupId>com.datastax.astra</groupId>
+      <artifactId>beam-sdks-java-io-astra</artifactId>
+    </dependency>
+
+    <!-- Runner -->
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-direct-java</artifactId>
       <scope>runtime</scope>
     </dependency>
 
+    <!-- LOG -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Third Parties -->
+     <dependency>
+      <groupId>com.theokanning.openai-gpt3-java</groupId>
+      <artifactId>service</artifactId>
+      <version>${openai-java.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+      <version>${lombok.version}</version>
+    </dependency>
+      <dependency>
+          <groupId>com.google.apis</groupId>
+          <artifactId>google-api-services-bigquery</artifactId>
+          <version>v2-rev20230422-2.0.0</version>
+          <scope>compile</scope>
+      </dependency>
+
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+            <path>
+              <groupId>com.datastax.oss</groupId>
+              <artifactId>java-driver-mapper-processor</artifactId>
+              <version>${cassandra-driver4x.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

@@ -1,13 +1,15 @@
 package com.datastax.astra.dataflow;
 
+import com.datastax.astra.dataflow.domains.LanguageCode;
+import com.datastax.astra.dataflow.domains.LanguageCodeDaoMapperFactoryFn;
 import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
 import com.google.api.services.bigquery.model.TableReference;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbWriteOptions;
-import org.apache.beam.sdk.io.astra.db.transforms.AstraCqlQueryPTransform;
+import org.apache.beam.sdk.io.astra.db.transforms.RunCqlQueryFn;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -20,17 +22,27 @@ import org.slf4j.LoggerFactory;
 /**
  * Big Query to Astra
  *
+ *
+ *
+
+ export ASTRA_KEYSPACE=samples_dataflow
+ export ASTRA_SECRET_TOKEN=projects/747469159044/secrets/astra-token/versions/2
+ export ASTRA_SECRET_SECURE_BUNDLE=projects/747469159044/secrets/secure-connect-bundle-demo/versions/2
+
+ export GCP_PROJECT_ID=integrations-379317
+ export GCP_BIGQUERY_DATASET=dataflow_input_us
+ export GCP_BIGQUERY_TABLE=destination
 
  mvn compile exec:java \
  -Dexec.mainClass=com.datastax.astra.dataflow.BigQuery_to_AstraDb \
  -Dexec.args="\
- --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
- --keyspace=samples_dataflow \
- --bigQueryDataset=dataflow_input_us \
- --bigQueryTable=destination \
+ --astraToken=${ASTRA_SECRET_TOKEN} \
+ --astraSecureConnectBundle=${ASTRA_SECRET_SECURE_BUNDLE} \
+ --astraKeyspace=${ASTRA_KEYSPACE} \
+ --bigQueryDataset=${GCP_BIGQUERY_DATASET} \
+ --bigQueryTable=${GCP_BIGQUERY_TABLE} \
  --runner=DataflowRunner \
- --project=integrations-379317 \
+ --project=${GCP_PROJECT_ID} \
  --region=us-central1"
 
  */
@@ -98,18 +110,19 @@ public class BigQuery_to_AstraDb {
 
                         // 3. Create Table if needed with a CQL Statement
                         .apply("Create Destination Table",
-                            new AstraCqlQueryPTransform<>(astraToken, astraSecureBundle,
-                                    options.getKeyspace(), LanguageCode.cqlCreateTable()))
+                            new RunCqlQueryFn<>(astraToken, astraSecureBundle,
+                                    options.getAstraKeyspace(), LanguageCode.cqlCreateTable()))
 
                         // 4. Write into Astra
                         .apply("Write Into Astra", AstraDbIO.<LanguageCode>write()
                             .withToken(astraToken)                          // read from secret
-                            .withSecureConnectBundleData(astraSecureBundle) // read from secret
-                            .withKeyspace(options.getKeyspace())
+                            .withSecureConnectBundle(astraSecureBundle) // read from secret
+                            .withKeyspace(options.getAstraKeyspace())
+                            .withMapperFactoryFn(new LanguageCodeDaoMapperFactoryFn())
                             .withEntity(LanguageCode.class));
             bigQueryToAstraDbPipeline.run().waitUntilFinish();
         } finally {
-            AstraDbConnectionManager.cleanup();
+            CqlSessionHolder.cleanup();
         }
     }
 

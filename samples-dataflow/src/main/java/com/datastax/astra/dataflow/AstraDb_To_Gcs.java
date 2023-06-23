@@ -1,11 +1,13 @@
 package com.datastax.astra.dataflow;
 
+import com.datastax.astra.dataflow.domains.LanguageCode;
+import com.datastax.astra.dataflow.domains.LanguageCodeDaoMapperFactoryFn;
 import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbReadOptions;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -36,10 +38,10 @@ import org.slf4j.LoggerFactory;
  -Dexec.mainClass=com.datastax.astra.dataflow.AstraDb_To_Gcs \
  -Dexec.args="\
  --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
- --keyspace=samples_dataflow \
+ --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/2 \
+ --astraKeyspace=samples_dataflow \
  --table=languages \
- --outputFolder=gs://astra_dataflow_outputs \
+ --outputFolder=gs://astra_dataflow_output \
  --runner=DataflowRunner \
  --project=integrations-379317 \
  --region=us-central1"
@@ -91,10 +93,11 @@ public class AstraDb_To_Gcs {
             // Build Read
             AstraDbIO.Read<LanguageCode> astraSource = AstraDbIO.<LanguageCode>read()
                     .withToken(astraToken)
-                    .withSecureConnectBundleData(astraSecureBundle)
-                    .withKeyspace(options.getKeyspace())
+                    .withSecureConnectBundle(astraSecureBundle)
+                    .withKeyspace(options.getAstraKeyspace())
                     .withTable(options.getTable())
                     .withCoder(SerializableCoder.of(LanguageCode.class))
+                    .withMapperFactoryFn(new LanguageCodeDaoMapperFactoryFn())
                     .withEntity(LanguageCode.class);
             LOGGER.info("Astra Read has been initialized");
 
@@ -110,7 +113,7 @@ public class AstraDb_To_Gcs {
             //.withCompression(Compression.GZIP)
             astraDbToGcsPipeline.run().waitUntilFinish();
         } finally {
-            AstraDbConnectionManager.cleanup();
+            CqlSessionHolder.cleanup();
         }
     }
 

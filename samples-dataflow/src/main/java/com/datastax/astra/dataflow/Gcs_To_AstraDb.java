@@ -17,13 +17,15 @@
  */
 package com.datastax.astra.dataflow;
 
+import com.datastax.astra.dataflow.domains.LanguageCode;
+import com.datastax.astra.dataflow.domains.LanguageCodeDaoMapperFactoryFn;
 import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbWriteOptions;
-import org.apache.beam.sdk.io.astra.db.transforms.AstraCqlQueryPTransform;
+import org.apache.beam.sdk.io.astra.db.transforms.RunCqlQueryFn;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -40,8 +42,8 @@ import org.slf4j.LoggerFactory;
  -Dexec.mainClass=com.datastax.astra.dataflow.Gcs_To_AstraDb \
  -Dexec.args="\
  --astraToken=projects/747469159044/secrets/astra-token/versions/2 \
- --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/1 \
- --keyspace=samples_dataflow \
+ --astraSecureConnectBundle=projects/747469159044/secrets/secure-connect-bundle-demo/versions/2 \
+ --astraKeyspace=samples_dataflow \
  --csvInput=gs://astra_dataflow_inputs/csv/language-codes.csv \
  --runner=DataflowRunner \
  --project=integrations-379317 \
@@ -82,6 +84,7 @@ public class Gcs_To_AstraDb {
             .fromArgs(args).withValidation()
             .as(GcsToAstraDbOptions.class);
 
+    // The provided parameter is a resource ID.
     String astraToken = GoogleSecretManagerUtils.readTokenSecret(options.getAstraToken());
     byte[] astraSecureBundle = GoogleSecretManagerUtils.readSecureBundleSecret(options.getAstraSecureConnectBundle());
     LOGGER.info("+ Secrets Parsed after {} millis.", System.currentTimeMillis() - top);
@@ -99,20 +102,22 @@ public class Gcs_To_AstraDb {
               .apply("Convert To LanguageCode", ParDo.of(new MapCsvLineAsRecord()))
 
               // Single Operation perform in the constructor of PTransform
-              .apply("Create Destination Table",
-                      new AstraCqlQueryPTransform<>(astraToken, astraSecureBundle,
-                              options.getKeyspace(), LanguageCode.cqlCreateTable()))
+              .apply("Create Destination Table", new RunCqlQueryFn<>(
+                              astraToken, astraSecureBundle,
+                              options.getAstraKeyspace(),
+                              LanguageCode.cqlCreateTable()))
 
               // Insert Results Into Astra
               .apply("Write Into Astra", AstraDbIO.<LanguageCode>write()
                       .withToken(astraToken)                          // read from secret
-                      .withSecureConnectBundleData(astraSecureBundle) // read from secret
-                      .withKeyspace(options.getKeyspace())
+                      .withSecureConnectBundle(astraSecureBundle) // read from secret
+                      .withKeyspace(options.getAstraKeyspace())
+                      .withMapperFactoryFn(new LanguageCodeDaoMapperFactoryFn())
                       .withEntity(LanguageCode.class));
 
       pipelineWrite.run().waitUntilFinish();
     } finally {
-      AstraDbConnectionManager.cleanup();
+        CqlSessionHolder.cleanup();
     }
   }
 

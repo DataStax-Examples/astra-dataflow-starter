@@ -14,15 +14,11 @@
   </parent>
 
   <properties>
-    <slf4j.version>2.0.6</slf4j.version>
-    <logback.version>1.4.6</logback.version>
-
     <guava.version>31.1-jre</guava.version>
     <google.cloud.librairies>26.10.0</google.cloud.librairies>
-
-    <!-- does not update: match grpc 1.52.1 from Bom -->
     <google.cloud-secretmanager.version>2.10.0</google.cloud-secretmanager.version>
     <google.cloud-bigquery.version>2.26.1</google.cloud-bigquery.version>
+    <cassandra-driver4x.version>4.16.0</cassandra-driver4x.version>
   </properties>
   
   <dependencies>
@@ -30,7 +26,6 @@
     <dependency>
       <groupId>com.datastax.astra</groupId>
       <artifactId>beam-sdks-java-io-astra</artifactId>
-      <version>0.2.4-SNAPSHOT</version>
     </dependency>
 
     <dependency>
@@ -73,13 +68,29 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>${logback.version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.datastax.oss</groupId>
+              <artifactId>java-driver-mapper-processor</artifactId>
+              <version>${cassandra-driver4x.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

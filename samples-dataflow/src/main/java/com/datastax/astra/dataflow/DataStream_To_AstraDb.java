@@ -1,21 +1,15 @@
 package com.datastax.astra.dataflow;
 
 import com.datastax.astra.dataflow.utils.GoogleSecretManagerUtils;
-import com.google.api.services.bigquery.model.TableReference;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.astra.db.AstraDbConnectionManager;
-import org.apache.beam.sdk.io.astra.db.AstraDbIO;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.io.astra.db.options.AstraDbWriteOptions;
-import org.apache.beam.sdk.io.astra.db.transforms.AstraCqlQueryPTransform;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.Validation;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,7 +177,7 @@ public class DataStream_To_AstraDb {
 */
             dataStreamToAstraDbPipeline.run().waitUntilFinish();
         } finally {
-            AstraDbConnectionManager.cleanup();
+            CqlSessionHolder.cleanup();
         }
     }
 
