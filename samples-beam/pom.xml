@@ -14,8 +14,8 @@
   </parent>
 
   <properties>
-    <cassandra-driver4x.version>4.16.0</cassandra-driver4x.version>
-    <lombok.version>1.18.28</lombok.version>
+    <cassandra-driver4x.version>4.17.0</cassandra-driver4x.version>
+    <lombok.version>1.18.34</lombok.version>
     <netty.version>4.1.94.Final</netty.version>
     <openai-java.version>0.12.0</openai-java.version>
   </properties>
