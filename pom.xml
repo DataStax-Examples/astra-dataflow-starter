@@ -21,12 +21,12 @@
     <!-- Beam -->
     <beam.version>2.48.0</beam.version>
     <!-- AstraDbIO -->
-    <astra.beam-sdk.version>4.16.3-SNAPSHOT</astra.beam-sdk.version>
+    <astra.beam-sdk.version>4.16.3</astra.beam-sdk.version>
     <slf4j.version>2.0.7</slf4j.version>
     <logback.version>1.4.8</logback.version>
     <!-- Third Parties -->
     <!-- Maven -->
-    <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-exec-plugin.version>1.6.0</maven-exec-plugin.version>
     <maven-enforcer-plugin.version>3.3.0</maven-enforcer-plugin.version>
     <maven-shade-plugin.version>3.4.1</maven-shade-plugin.version>
